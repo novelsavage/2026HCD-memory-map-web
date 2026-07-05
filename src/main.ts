@@ -1,0 +1,177 @@
+import * as THREE from "three";
+import { createSceneContext, HOME_CAMERA_POS } from "./scene";
+import { loadCampusModel, snapToGround } from "./campus";
+import { loadMemories } from "./data";
+import { MemoryCards } from "./cards";
+import { AutoTour } from "./tour";
+import { UI } from "./ui";
+import { CALIBRATION, MODEL_TRANSFORM } from "./config";
+
+async function main(): Promise<void> {
+  const container = document.getElementById("app")!;
+  const ctx = createSceneContext(container);
+  const cards = new MemoryCards();
+  ctx.scene.add(cards.group);
+
+  const tour = new AutoTour(ctx.camera, ctx.controls, (active) =>
+    ui.setTourActive(active)
+  );
+
+  const ui = new UI({
+    onFilterChange: (predicate) => {
+      const visible = cards.applyFilter(predicate);
+      ui.updateCount(visible, total, source);
+    },
+    onTourToggle: () => tour.toggle(),
+    onResetView: () => {
+      ctx.controls.target.set(0, 0, 0);
+      ctx.camera.position.copy(HOME_CAMERA_POS);
+    }
+  });
+
+  // --- 読み込み（モデルとデータを並行して） ---
+  ui.setLoadingText("キャンパスモデルを読み込み中…");
+  const [campus, loaded] = await Promise.all([
+    loadCampusModel((ratio) =>
+      ui.setLoadingText(`キャンパスモデルを読み込み中… ${Math.round(ratio * 100)}%`)
+    ),
+    loadMemories()
+  ]);
+  ctx.scene.add(campus.group);
+
+  const { memories, source } = loaded;
+  const total = memories.length;
+  ui.setLoadingText("思い出を配置中…");
+
+  const raycaster = new THREE.Raycaster();
+  cards.spawn(memories, (x, z) => snapToGround(x, z, campus.raycastTargets, raycaster));
+
+  ui.buildFilters(memories);
+  ui.updateCount(total, total, source);
+  ui.finishLoading();
+  if (source === "demo") {
+    ui.toast("Supabase 未接続のためデモデータを表示しています（.env を設定してください）");
+  }
+
+  // --- クリックでカード選択 ---
+  const pointer = new THREE.Vector2();
+  let downAt = { x: 0, y: 0, t: 0 };
+  ctx.renderer.domElement.addEventListener("pointerdown", (e) => {
+    downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  ctx.renderer.domElement.addEventListener("pointerup", (e) => {
+    // ドラッグと区別
+    if (
+      Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6 ||
+      performance.now() - downAt.t > 400
+    ) {
+      return;
+    }
+    pointer.set(
+      (e.clientX / innerWidth) * 2 - 1,
+      -(e.clientY / innerHeight) * 2 + 1
+    );
+    const memory = cards.pick(pointer, ctx.camera);
+    if (memory) {
+      ui.showDetail(memory);
+      const worldPos = cards.worldPositionOf(memory);
+      if (worldPos) focusTarget.copy(worldPos);
+      focusing = true;
+    } else {
+      ui.closeDetail();
+    }
+  });
+
+  // カメラフォーカス（クリックしたカードへ滑らかに寄る）
+  const focusTarget = new THREE.Vector3();
+  let focusing = false;
+  addEventListener("wheel", () => (focusing = false), { passive: true });
+  ctx.renderer.domElement.addEventListener("pointerdown", () => (focusing = false));
+
+  // --- デバッグ（キャリブレーション用）: ?debug=1 ---
+  if (new URLSearchParams(location.search).has("debug")) {
+    setupDebugGui(ctx.scene, campus.group);
+  }
+
+  // --- メインループ ---
+  const clock = new THREE.Clock();
+  function animate(): void {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.1);
+
+    cards.update(dt, ctx.camera);
+    tour.update(dt);
+
+    if (focusing) {
+      ctx.controls.target.lerp(focusTarget, 1 - Math.pow(0.001, dt));
+      const desired = focusTarget
+        .clone()
+        .add(
+          ctx.camera.position.clone().sub(ctx.controls.target).setLength(45)
+        );
+      ctx.camera.position.lerp(desired, 1 - Math.pow(0.01, dt));
+      if (ctx.controls.target.distanceTo(focusTarget) < 0.5) focusing = false;
+    }
+
+    ctx.controls.update();
+    ctx.render();
+  }
+  animate();
+}
+
+async function setupDebugGui(scene: THREE.Scene, campusGroup: THREE.Object3D): Promise<void> {
+  const { GUI } = await import("lil-gui");
+  const gui = new GUI({ title: "キャリブレーション" });
+
+  scene.add(new THREE.AxesHelper(100));
+  const originMarker = new THREE.Mesh(
+    new THREE.SphereGeometry(2, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0xff4060 })
+  );
+  scene.add(originMarker);
+
+  const geo = gui.addFolder("Geo (config.CALIBRATION)");
+  geo.add(CALIBRATION, "unitsPerMeter", 0.01, 10);
+  geo.add(CALIBRATION, "yawDeg", -180, 180);
+  geo.add(CALIBRATION, "invertEastWest");
+  geo.add(CALIBRATION, "invertNorthSouth");
+  geo.add(CALIBRATION, "offsetX", -500, 500);
+  geo.add(CALIBRATION, "offsetZ", -500, 500);
+
+  const model = gui.addFolder("Model (config.MODEL_TRANSFORM)");
+  const applyModel = () => {
+    campusGroup.scale.setScalar(MODEL_TRANSFORM.scale);
+    campusGroup.rotation.y = (MODEL_TRANSFORM.yawDeg * Math.PI) / 180;
+    campusGroup.position.set(
+      MODEL_TRANSFORM.offsetX,
+      MODEL_TRANSFORM.offsetY,
+      MODEL_TRANSFORM.offsetZ
+    );
+  };
+  model.add(MODEL_TRANSFORM, "scale", 0.01, 10).onChange(applyModel);
+  model.add(MODEL_TRANSFORM, "yawDeg", -180, 180).onChange(applyModel);
+  model.add(MODEL_TRANSFORM, "offsetX", -500, 500).onChange(applyModel);
+  model.add(MODEL_TRANSFORM, "offsetY", -100, 100).onChange(applyModel);
+  model.add(MODEL_TRANSFORM, "offsetZ", -500, 500).onChange(applyModel);
+
+  gui.add(
+    {
+      dump: () => {
+        console.log("CALIBRATION =", JSON.stringify(CALIBRATION, null, 2));
+        console.log("MODEL_TRANSFORM =", JSON.stringify(MODEL_TRANSFORM, null, 2));
+      }
+    },
+    "dump"
+  ).name("設定を console に出力");
+
+  console.info(
+    "[debug] 値を調整後「設定を console に出力」を押し、src/config.ts に書き戻してください。" +
+      "※ Geo 系はカードの再配置が必要なためリロードして反映確認してください。"
+  );
+}
+
+main().catch((err) => {
+  console.error(err);
+  const el = document.getElementById("loading-text");
+  if (el) el.textContent = `読み込みに失敗しました: ${err.message ?? err}`;
+});

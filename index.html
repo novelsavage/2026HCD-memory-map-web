@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>思い出マップ 2026 — 麗澤大学ホームカミングデー</title>
+  <style>
+    :root {
+      --bg: #050912;
+      --panel: rgba(10, 18, 32, 0.86);
+      --line: rgba(94, 200, 255, 0.25);
+      --accent: #5ec8ff;
+      --text: #dbeaf5;
+      --muted: #7d95a8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+    }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    .overlay { position: fixed; z-index: 10; pointer-events: none; }
+    .overlay > * { pointer-events: auto; }
+
+    #hud-top {
+      top: 0; left: 0; right: 0;
+      padding: 14px 18px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+      background: linear-gradient(to bottom, rgba(5, 9, 18, 0.85), transparent);
+    }
+    #hud-top h1 {
+      font-size: 16px; font-weight: 600; letter-spacing: 0.08em;
+      color: var(--accent);
+      text-shadow: 0 0 12px rgba(94, 200, 255, 0.5);
+      margin-right: 4px;
+    }
+    #hud-top .sub { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+    #count { font-size: 11px; color: var(--muted); margin-left: auto; }
+    #count b { color: var(--accent); font-size: 14px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      border: 1px solid var(--line);
+      background: rgba(10, 18, 32, 0.6);
+      color: var(--text);
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+    .chip.off { opacity: 0.35; filter: grayscale(0.7); }
+    .chip:hover { border-color: var(--accent); }
+
+    #hud-bottom {
+      bottom: 0; left: 0; right: 0;
+      padding: 12px 18px 16px;
+      display: flex; align-items: flex-end; gap: 12px;
+      background: linear-gradient(to top, rgba(5, 9, 18, 0.8), transparent);
+      font-size: 11px; color: var(--muted);
+    }
+    #hud-bottom button {
+      border: 1px solid var(--line); background: var(--panel); color: var(--text);
+      border-radius: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer;
+    }
+    #hud-bottom button:hover { border-color: var(--accent); color: var(--accent); }
+    #hint { flex: 1; text-align: right; }
+
+    #detail {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 20;
+      width: min(360px, 92vw);
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      border-left: 1px solid var(--line);
+      padding: 20px;
+      overflow-y: auto;
+      transform: translateX(105%);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #detail.open { transform: translateX(0); }
+    #detail .close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer;
+    }
+    #detail .close:hover { color: var(--accent); }
+    #detail img {
+      width: 100%; aspect-ratio: 1; object-fit: contain;
+      border: 1px solid var(--line); border-radius: 10px;
+      background: #0a1220;
+      margin: 20px 0 14px;
+    }
+    #detail .genre-tag {
+      display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px;
+      color: #101418; font-weight: 600; margin-right: 8px;
+    }
+    #detail .era { font-size: 12px; color: var(--muted); }
+    #detail .text { font-size: 14px; line-height: 1.9; margin: 14px 0; white-space: pre-wrap; }
+    #detail .nick { font-size: 12px; color: var(--muted); text-align: right; }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 50;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      transition: opacity 0.6s;
+    }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading .ring {
+      width: 54px; height: 54px; border-radius: 50%;
+      border: 2px solid rgba(94, 200, 255, 0.15);
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+    #loading p { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%);
+      z-index: 30; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px 16px; font-size: 12px; color: var(--muted);
+      opacity: 0; transition: opacity 0.4s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="overlay" id="hud-top">
+    <h1>思い出マップ 2026</h1>
+    <span class="sub">麗澤大学 Home Coming Day</span>
+    <div class="chips" id="genre-chips"></div>
+    <div class="chips" id="era-chips"></div>
+    <span id="count"></span>
+  </div>
+
+  <div class="overlay" id="hud-bottom">
+    <button id="tour-btn">🎥 自動ツアー</button>
+    <button id="reset-btn">⌂ 視点リセット</button>
+    <span id="hint">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 移動 ／ カードをクリックで詳細</span>
+  </div>
+
+  <aside id="detail">
+    <button class="close" id="detail-close">×</button>
+    <img id="detail-img" alt="思い出カード" />
+    <div>
+      <span class="genre-tag" id="detail-genre"></span>
+      <span class="era" id="detail-era"></span>
+    </div>
+    <p class="text" id="detail-text"></p>
+    <p class="nick" id="detail-nick"></p>
+  </aside>
+
+  <div id="loading">
+    <div class="ring"></div>
+    <p id="loading-text">キャンパスを読み込み中…</p>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
