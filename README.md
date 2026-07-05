@@ -12,6 +12,9 @@
 
 UI は撮影 WebApp と同じフォント（Bitcount + DotGothic16）のダーク + グリーンテーマ。
 
+詳細設計は [設計書.md](設計書.md)、広域マップ化プランは
+[docs/wide-area-map-plan.md](docs/wide-area-map-plan.md) を参照。
+
 ## セットアップ
 
 ```bash
