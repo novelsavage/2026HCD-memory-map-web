@@ -100,17 +100,13 @@ export async function loadSurroundings(
     group.add(solid);
     raycastTargets.push(solid);
 
-    // 稜線: 加算合成グリーン。
-    // 線は距離に関係なく常に 1px 幅で描かれるため、遠景では 1 ピクセルに
-    // 何本も重なって加算飽和し「明るい塊」になる（ムラの原因）。
-    // opacity を低くして飽和条件を上げ、残りはフォグの距離減衰に任せる。
+    // 稜線: 通常合成（加算ブルーム対象にしない）
     const edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(merged, 30),
       new THREE.LineBasicMaterial({
         color: 0x2effa0,
         transparent: true,
-        opacity: 0.2,
-        blending: THREE.AdditiveBlending,
+        opacity: 0.38,
         depthWrite: false
       })
     );
@@ -119,9 +115,9 @@ export async function loadSurroundings(
 
   // --- 道路・鉄道（ポリライン） ---
   group.add(
-    buildLines(data.roads.filter((r) => !r.major), baseY + 0.25, 0x1d9c64, 0.18),
-    buildLines(data.roads.filter((r) => r.major), baseY + 0.35, 0x2effa0, 0.32),
-    buildLines(data.railways, baseY + 0.5, 0x7dffce, 0.6)
+    buildLines(data.roads.filter((r) => !r.major), baseY + 0.25, 0x1d9c64, 0.32),
+    buildLines(data.roads.filter((r) => r.major), baseY + 0.35, 0x2effa0, 0.52),
+    buildLines(data.railways, baseY + 0.5, 0x7dffce, 0.72)
   );
 
   // --- 駅マーカー + ラベル ---
@@ -157,7 +153,6 @@ function buildLines(
       color,
       transparent: true,
       opacity,
-      blending: THREE.AdditiveBlending,
       depthWrite: false
     })
   );
@@ -177,8 +172,7 @@ function createStationMarker(
     new THREE.MeshBasicMaterial({
       color: 0x7dffce,
       transparent: true,
-      opacity: 0.35,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.28,
       depthWrite: false,
       side: THREE.DoubleSide
     })
