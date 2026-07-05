@@ -47,7 +47,8 @@ async function main(): Promise<void> {
     new THREE.Box2(
       new THREE.Vector2(campusBox.min.x, campusBox.min.z),
       new THREE.Vector2(campusBox.max.x, campusBox.max.z)
-    )
+    ),
+    campus.raycastTargets
   );
   const groundTargets = [...campus.raycastTargets];
   if (surroundings) {

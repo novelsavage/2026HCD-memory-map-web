@@ -45,7 +45,6 @@ export function createSceneContext(container: HTMLElement): SceneContext {
   dir.position.set(200, 320, 120);
   scene.add(dir);
 
-  addStars(scene);
   addGround(scene);
 
   const composer = new EffectComposer(renderer);
@@ -76,31 +75,6 @@ export function createSceneContext(container: HTMLElement): SceneContext {
     composer,
     render: () => composer.render()
   };
-}
-
-function addStars(scene: THREE.Scene): void {
-  const count = 2600;
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    // 上半球にランダム配置
-    const radius = 1800 + Math.random() * 1600;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(0.3 + Math.random() * 0.68); // 仰角17°以上（市街地と混ざらない）
-    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = radius * Math.cos(phi);
-    positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const material = new THREE.PointsMaterial({
-    color: 0xcfffe3,
-    size: 2.2,
-    sizeAttenuation: false,
-    transparent: true,
-    opacity: 0.75,
-    depthWrite: false
-  });
-  scene.add(new THREE.Points(geometry, material));
 }
 
 function addGround(scene: THREE.Scene): void {

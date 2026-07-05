@@ -23,7 +23,8 @@ export interface Surroundings {
  * データ出典: © OpenStreetMap contributors (ODbL)
  */
 export async function loadSurroundings(
-  campusBoundsXZ: THREE.Box2
+  campusBoundsXZ: THREE.Box2,
+  campusTargets: THREE.Object3D[]
 ): Promise<Surroundings | null> {
   if (new URLSearchParams(location.search).has("nocity")) return null;
 
@@ -52,13 +53,25 @@ export async function loadSurroundings(
   raycastTargets.push(plane);
 
   // --- 建物（押し出し + エッジ発光） ---
+  // キャンパスモデルと重複する建物の除外は、バウンディング矩形だけだと
+  // 「矩形 − 実際の不定形モデル」の差の帯が建物ゼロの空白になってしまう。
+  // 矩形内の候補だけ実際にモデルへレイキャストして「本当にモデルの上」の時のみ除外する。
+  const raycaster = new THREE.Raycaster();
+  const isOnCampusModel = (x: number, z: number): boolean => {
+    raycaster.set(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0));
+    return raycaster.intersectObjects(campusTargets, false).length > 0;
+  };
   const solidGeos: THREE.BufferGeometry[] = [];
   for (const building of data.buildings) {
     const local = building.pts.map(([lon, lat]) => projectLatLon(lat, lon));
-    // キャンパスモデルの範囲内は Google Earth モデル側に任せてスキップ
     const cx = local.reduce((s, p) => s + p.x, 0) / local.length;
     const cz = local.reduce((s, p) => s + p.z, 0) / local.length;
-    if (campusBoundsXZ.containsPoint(new THREE.Vector2(cx, cz))) continue;
+    if (
+      campusBoundsXZ.containsPoint(new THREE.Vector2(cx, cz)) &&
+      isOnCampusModel(cx, cz)
+    ) {
+      continue;
+    }
 
     // ExtrudeGeometry は XY 平面 + Z 押し出しなので (x, -z) で作って X 軸回転する
     const shape = new THREE.Shape(local.map((p) => new THREE.Vector2(p.x, -p.z)));
