@@ -59,13 +59,15 @@ export const GENRE_FALLBACK_COLOR = "#9aa7b4";
 const UNITY_UNITS_PER_METER = 0.29;
 const unityWorld = (units: number): number => units / UNITY_UNITS_PER_METER;
 
-/** 3D ラベル寸法の追い縮小 */
-const MARKER_TEXT_SCALE = 0.62;
+/** 3D ラベル全体の表示倍率 */
+const MARKER_TEXT_SCALE = 1.2;
 
 export const MARKER = {
   textScale: MARKER_TEXT_SCALE,
-  /** 地面からポール上端まで（Unity worldHeight=10） */
+  /** 密集時にも確保する地面からの最低高度（Unity worldHeight=10） */
   groundOffsetY: unityWorld(10),
+  /** 孤立した思い出を目立たせる標準高度 */
+  defaultLabelHeight: unityWorld(20),
   poleRadius: unityWorld(0.12),
   pinRadius: unityWorld(0.2),
   /** 左上Pivotのテキスト Plane（幅は Canvas アスペクト比から自動） */

@@ -83,7 +83,10 @@ export class MemoryMarkers {
     this.assignLabelStacks();
   }
 
-  /** 近接マーカーはラベルを積み、ポールを同じ高さまで延長する。 */
+  /**
+   * 孤立時は標準高度に置く。近接マーカーは最低高度まで下へ積み、
+   * それ以上は標準高度より上へ積む。
+   */
   private assignLabelStacks(): void {
     const active = this.entries.filter((e) => e.visible);
     const radiusSq = MARKER.stackRadius * MARKER.stackRadius;
@@ -110,9 +113,19 @@ export class MemoryMarkers {
         Math.max(idx, 0),
         MARKER.stackMaxLevels - 1
       );
+      const downwardLevels = Math.max(
+        0,
+        Math.floor(
+          (MARKER.defaultLabelHeight - MARKER.groundOffsetY) /
+            MARKER.stackHeightStep
+        )
+      );
       const poleHeight =
-        MARKER.groundOffsetY + stackIndex * MARKER.stackHeightStep;
-      entry.pole.scale.y = poleHeight / MARKER.groundOffsetY;
+        stackIndex <= downwardLevels
+          ? MARKER.defaultLabelHeight - stackIndex * MARKER.stackHeightStep
+          : MARKER.defaultLabelHeight +
+            (stackIndex - downwardLevels) * MARKER.stackHeightStep;
+      entry.pole.scale.y = poleHeight / MARKER.defaultLabelHeight;
       entry.pole.position.y = poleHeight / 2;
       entry.label.position.y = poleHeight;
     }
@@ -142,7 +155,7 @@ export class MemoryMarkers {
     root.add(pin);
   }
 
-  /** 地面(y=0)からポール上端(y=groundOffsetY)まで */
+  /** 地面(y=0)から標準高度まで */
   private buildPole(
     root: THREE.Group,
     color: THREE.Color,
@@ -157,7 +170,7 @@ export class MemoryMarkers {
     });
     fadeTargets.push(poleMat);
 
-    const height = MARKER.groundOffsetY;
+    const height = MARKER.defaultLabelHeight;
     const pole = new THREE.Mesh(
       new THREE.CylinderGeometry(
         MARKER.poleRadius,
@@ -195,7 +208,7 @@ export class MemoryMarkers {
     geometry.translate(planeWidth / 2, -planeHeight / 2, 0);
     const label = new THREE.Mesh(geometry, labelMat);
     label.name = "label";
-    label.position.y = MARKER.groundOffsetY;
+    label.position.y = MARKER.defaultLabelHeight;
     label.renderOrder = 3;
     root.add(label);
     return label;
