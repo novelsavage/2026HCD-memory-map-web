@@ -16,11 +16,11 @@ export const CALIBRATION = {
 
 // キャンパスモデル(campus.glb)の配置調整
 export const MODEL_TRANSFORM = {
-  scale: 1,
+  scale: 3.51,
   yawDeg: 0,
-  offsetX: 0,
-  offsetY: 0,
-  offsetZ: 0,
+  offsetX: -409,
+  offsetY: -30.2,
+  offsetZ: 280,
   // バウンディングボックス中心が原点から大きく外れている場合に自動で中央寄せする
   autoCenterThreshold: 2000
 };
@@ -37,8 +37,8 @@ export const MAP_BOUNDS = {
 
 // OSM 周辺市街地（surroundings.ts）
 export const SURROUNDINGS = {
-  // キャンパスモデルの地面高さ（bbox min.y ≒ 13.5）に合わせた台地の高さ
-  baseY: 13.2,
+  // 変換後キャンパスモデルの bbox 底面より少し下げ、面の重なりを避ける
+  baseOffsetFromCampusMin: -0.3,
   buildingDefaultHeight: 6.5
 };
 
