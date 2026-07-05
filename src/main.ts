@@ -52,20 +52,29 @@ async function main(): Promise<void> {
     campus.raycastTargets,
     surroundingsBaseY
   );
-  const groundTargets = [...campus.raycastTargets];
   if (surroundings) {
     ctx.scene.add(surroundings.group);
-    groundTargets.push(...surroundings.raycastTargets);
   }
+  const groundFallbackY = surroundings?.baseY ?? campusBox.min.y;
+  const campusGroundTargets = campus.raycastTargets;
+  const surroundingsGroundTargets = surroundings?.raycastTargets ?? [];
 
   const { memories, source } = loaded;
   const mapMemories = memories.filter(isInMapBounds);
   const total = mapMemories.length;
   ui.setLoadingText("思い出を配置中…");
 
+  ctx.scene.updateMatrixWorld(true);
   const raycaster = new THREE.Raycaster();
   await markers.spawn(mapMemories, (x, z) =>
-    snapToGround(x, z, groundTargets, raycaster)
+    snapToGround(
+      x,
+      z,
+      campusGroundTargets,
+      surroundingsGroundTargets,
+      groundFallbackY,
+      raycaster
+    )
   );
 
   ui.buildFilters(mapMemories);

@@ -108,15 +108,33 @@ function applyHologramLook(
   for (const wire of wireMeshes) group.add(wire);
 }
 
-/** 指定した XZ 位置の地面の高さを求める。ヒットしなければ 0。 */
+/** 指定した XZ 位置の地面の高さを求める。キャンパス Mesh を優先し、未ヒット時は fallbackY。 */
 export function snapToGround(
   x: number,
   z: number,
-  targets: THREE.Object3D[],
+  campusTargets: THREE.Object3D[],
+  surroundingsTargets: THREE.Object3D[],
+  fallbackY: number,
   raycaster = new THREE.Raycaster()
 ): number {
-  raycaster.set(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0));
-  raycaster.far = 1000;
-  const hits = raycaster.intersectObjects(targets, false);
-  return hits.length > 0 ? hits[0].point.y : 0;
+  raycaster.set(new THREE.Vector3(x, 2000, z), new THREE.Vector3(0, -1, 0));
+  raycaster.far = 2500;
+
+  const meshHitY = (targets: THREE.Object3D[]): number | null => {
+    const valid = targets.filter(
+      (obj): obj is THREE.Object3D => obj != null && obj instanceof THREE.Object3D
+    );
+    if (valid.length === 0) return null;
+    const hits = raycaster.intersectObjects(valid, false);
+    const hit = hits.find((h) => h.object instanceof THREE.Mesh);
+    return hit ? hit.point.y : null;
+  };
+
+  const campusY = meshHitY(campusTargets);
+  if (campusY != null) return campusY;
+
+  const surY = meshHitY(surroundingsTargets);
+  if (surY != null) return surY;
+
+  return fallbackY;
 }
