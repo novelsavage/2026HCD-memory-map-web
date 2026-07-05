@@ -6,7 +6,7 @@ import { loadMemories } from "./data";
 import { MemoryCards } from "./cards";
 import { AutoTour } from "./tour";
 import { UI } from "./ui";
-import { CALIBRATION, MODEL_TRANSFORM } from "./config";
+import { CALIBRATION, MODEL_TRANSFORM, SURROUNDINGS } from "./config";
 
 async function main(): Promise<void> {
   const container = document.getElementById("app")!;
@@ -43,12 +43,14 @@ async function main(): Promise<void> {
   // OSM 周辺市街地（キャンパスモデルの XZ 範囲内の建物は生成しない）
   ui.setLoadingText("周辺の街並みを生成中…");
   const campusBox = new THREE.Box3().setFromObject(campus.group);
+  const surroundingsBaseY = campusBox.min.y + SURROUNDINGS.baseOffsetFromCampusMin;
   const surroundings = await loadSurroundings(
     new THREE.Box2(
       new THREE.Vector2(campusBox.min.x, campusBox.min.z),
       new THREE.Vector2(campusBox.max.x, campusBox.max.z)
     ),
-    campus.raycastTargets
+    campus.raycastTargets,
+    surroundingsBaseY
   );
   const groundTargets = [...campus.raycastTargets];
   if (surroundings) {
@@ -117,7 +119,7 @@ async function main(): Promise<void> {
 
   // --- デバッグ（キャリブレーション用）: ?debug=1 ---
   if (new URLSearchParams(location.search).has("debug")) {
-    setupDebugGui(ctx.scene, campus.group);
+    setupDebugGui(ctx.scene, campus.group, surroundings);
   }
 
   // --- メインループ ---
@@ -149,7 +151,11 @@ async function main(): Promise<void> {
   animate();
 }
 
-async function setupDebugGui(scene: THREE.Scene, campusGroup: THREE.Object3D): Promise<void> {
+async function setupDebugGui(
+  scene: THREE.Scene,
+  campusGroup: THREE.Object3D,
+  surroundings: Awaited<ReturnType<typeof loadSurroundings>>
+): Promise<void> {
   const { GUI } = await import("lil-gui");
   const gui = new GUI({ title: "キャリブレーション" });
 
@@ -177,6 +183,12 @@ async function setupDebugGui(scene: THREE.Scene, campusGroup: THREE.Object3D): P
       MODEL_TRANSFORM.offsetY,
       MODEL_TRANSFORM.offsetZ
     );
+    campusGroup.updateWorldMatrix(true, true);
+    if (surroundings) {
+      const campusMinY = new THREE.Box3().setFromObject(campusGroup).min.y;
+      const nextBaseY = campusMinY + SURROUNDINGS.baseOffsetFromCampusMin;
+      surroundings.group.position.y = nextBaseY - surroundings.baseY;
+    }
   };
   model.add(MODEL_TRANSFORM, "scale", 0.01, 10).onChange(applyModel);
   model.add(MODEL_TRANSFORM, "yawDeg", -180, 180).onChange(applyModel);
@@ -196,7 +208,7 @@ async function setupDebugGui(scene: THREE.Scene, campusGroup: THREE.Object3D): P
 
   console.info(
     "[debug] 値を調整後「設定を console に出力」を押し、src/config.ts に書き戻してください。" +
-      "※ Geo 系はカードの再配置が必要なためリロードして反映確認してください。"
+      "※ Geo 系とカードの接地位置は再計算が必要なためリロードして反映確認してください。"
   );
 }
 

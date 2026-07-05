@@ -15,6 +15,8 @@ export interface Surroundings {
   group: THREE.Group;
   /** カードの接地対象（建物屋上・台地面） */
   raycastTargets: THREE.Object3D[];
+  /** 生成時に使用した周辺市街地の基準高さ */
+  baseY: number;
 }
 
 /**
@@ -24,7 +26,8 @@ export interface Surroundings {
  */
 export async function loadSurroundings(
   campusBoundsXZ: THREE.Box2,
-  campusTargets: THREE.Object3D[]
+  campusTargets: THREE.Object3D[],
+  baseY: number
 ): Promise<Surroundings | null> {
   if (new URLSearchParams(location.search).has("nocity")) return null;
 
@@ -38,8 +41,6 @@ export async function loadSurroundings(
   const group = new THREE.Group();
   group.name = "surroundings";
   const raycastTargets: THREE.Object3D[] = [];
-  const baseY = SURROUNDINGS.baseY;
-
   // --- 台地プレーン（bbox 全域の暗い床） ---
   const sw = projectLatLon(data.bounds.south, data.bounds.west);
   const ne = projectLatLon(data.bounds.north, data.bounds.east);
@@ -132,7 +133,7 @@ export async function loadSurroundings(
     `[surroundings] buildings=${solidGeos.length} roads=${data.roads.length} ` +
       `stations=${data.stations.map((s) => s.name).join(",")}`
   );
-  return { group, raycastTargets };
+  return { group, raycastTargets, baseY };
 }
 
 function buildLines(
