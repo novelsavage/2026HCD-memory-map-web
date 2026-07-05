@@ -26,7 +26,6 @@ export function createSceneContext(container: HTMLElement): SceneContext {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050d08);
-  scene.fog = new THREE.FogExp2(0x050d08, 0.0008);
 
   const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.5, 6000);
   camera.position.copy(HOME_CAMERA_POS);
