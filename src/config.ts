@@ -10,7 +10,7 @@ export const CALIBRATION = {
   offsetX: 0,
   offsetY: 0,
   offsetZ: 0,
-  // 原点からこの距離(m)を超える思い出は「大学外」として上空に浮かせる
+  // Unity 版由来の名残。現行 Web では未使用
   maxDistanceFromOriginMeters: 3000
 };
 
@@ -26,7 +26,7 @@ export const MODEL_TRANSFORM = {
 };
 
 // OCR WebApp (capture-form.tsx) の MAP_BOUNDS と同一。
-// この範囲内の思い出は地面に接地、範囲外は上空に浮遊させる。
+// この範囲内の思い出のみピン+テキストで表示する。
 // scripts/fetch-osm.mjs の取得範囲もこれ。
 export const MAP_BOUNDS = {
   north: 35.846503431837974,
@@ -53,14 +53,31 @@ export const GENRE_COLORS: Record<string, string> = {
 };
 export const GENRE_FALLBACK_COLOR = "#9aa7b4";
 
-export const CARD = {
-  size: 9, // カード一辺 (world units ≒ m)
-  poleHeightMin: 5,
-  poleHeightMax: 11,
-  floatRadiusMin: 260,
-  floatRadiusMax: 380,
-  floatHeightMin: 120,
-  floatHeightMax: 180
+// 思い出マーカー（Unity Pin.prefab 寸法 × Web キャンパス scale 3.51）
+// Unity: unitsPerMeter=0.29, worldHeight=10, PinText 32×8 unit
+const UNITY_UNITS_PER_METER = 0.29;
+const unityPin = (units: number): number =>
+  (units / UNITY_UNITS_PER_METER) * MODEL_TRANSFORM.scale;
+
+export const MARKER = {
+  /** 根元を地面より上に置く（Unity worldHeight=10 を換算 + キャンパス scale） */
+  groundOffsetY: unityPin(10),
+  /** 根元から地面までのポール（= groundOffsetY） */
+  poleRadius: unityPin(0.05),
+  /** PinText anchoredPosition.y */
+  labelOffsetY: unityPin(4),
+  /** テキスト Plane の高さ（幅は Canvas アスペクト比から自動） */
+  labelPlaneHeight: unityPin(8),
+  appearDuration: 1.2,
+  staggerStep: 0.15,
+  staggerMax: 3.0,
+  staggerBaseDelay: 0.4,
+  labelCanvasWidth: 1024,
+  labelFontSize: 72,
+  labelLineHeight: 1.35,
+  labelMaxLines: 5,
+  labelPadding: 40,
+  labelBorderWidth: 10
 };
 
 export const EVENT_ID =

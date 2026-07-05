@@ -1,15 +1,15 @@
 # 思い出マップ 2026 Web ビューア
 
 麗澤大学ホームカミングデー 2026「思い出マップ」で来場者が書いてくれた思い出を、
-ブラウザだけで見られる 3D サイト。Unity 版（hcd-mapping-v2）の演出を Three.js で再現している。
+ブラウザだけで見られる 3D サイト。Unity 版（hcd-mapping-v2 googleMaps ブランチ）の演出を Three.js で再現している。
 
 - Google Earth (Photorealistic 3D Tiles) 由来のテクスチャ付きキャンパス 3D モデル
 - `?holo` でホログラム調（発光ワイヤーフレーム）表示に切り替え
 - 周辺市街地（南柏駅まで約2.3km四方）を OSM データの発光ワイヤーフレームで描画
   （地図データ © OpenStreetMap contributors, ODbL）
-- 思い出カードをジャンル色のピン付きで緯度経度どおりに配置
-- 大学外の思い出はキャンパス上空のリングに浮遊
-- ジャンル / 年代フィルター、カードクリックで詳細パネル + カメラフォーカス
+- 思い出をジャンル色ピン + `memory_text` テキストビルボードで緯度経度どおりに配置
+- `MAP_BOUNDS` 外の思い出は非表示
+- ジャンル / 年代フィルター、クリックで詳細パネル + カメラフォーカス
 - 一定時間操作が無いと自動オービットツアー（展示モード）
 
 UI は撮影 WebApp と同じフォント（Bitcount + DotGothic16）のダーク + グリーンテーマ。
@@ -32,9 +32,7 @@ npm run dev
 
 - **Supabase** `public.memories`（[2026HCD-memory-map-ocr](https://github.com/novelsavage/2026HCD-memory-map-ocr) が書き込む）
   - RLS により anon キーで読めるのは `status='published'` のみ
-  - `reitaku_dummy: true=大学内 / false=大学外`（大学外は上空に浮遊表示）
-- **Cloudflare R2**: `card_url` のカード PNG。CORS で読めない場合は
-  `memory_text` から Canvas でカードを自動生成してフォールバックする
+  - 3D 表示は `memory_text` を使用。`card_url` は OCR パイプライン互換のため DB に残るが Web 3D では未使用
 
 ## キャンパスモデル
 

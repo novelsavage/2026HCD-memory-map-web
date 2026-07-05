@@ -96,12 +96,7 @@
       background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer;
     }
     #detail .close:hover { color: var(--accent); }
-    #detail img {
-      width: 100%; aspect-ratio: 1; object-fit: contain;
-      border: 1px solid var(--line); border-radius: 10px;
-      background: #081710;
-      margin: 20px 0 14px;
-    }
+    #detail .header { margin-top: 8px; }
     #detail .genre-tag {
       display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px;
       color: #101418; font-weight: 600; margin-right: 8px;
@@ -179,14 +174,13 @@
   <div class="overlay" id="hud-bottom">
     <button id="tour-btn">🎥 自動ツアー</button>
     <button id="reset-btn">⌂ 視点リセット</button>
-    <span id="hint">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 移動 ／ カードをクリックで詳細<br />
+    <span id="hint">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 移動 ／ 思い出をクリックで詳細<br />
       <small>地図データ © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style="color:inherit">OpenStreetMap</a> contributors</small></span>
   </div>
 
   <aside id="detail">
     <button class="close" id="detail-close">×</button>
-    <img id="detail-img" alt="思い出カード" />
-    <div>
+    <div class="header">
       <span class="genre-tag" id="detail-genre"></span>
       <span class="era" id="detail-era"></span>
     </div>

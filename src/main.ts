@@ -3,7 +3,7 @@ import { createSceneContext, HOME_CAMERA_POS } from "./scene";
 import { loadCampusModel, snapToGround } from "./campus";
 import { loadSurroundings } from "./surroundings";
 import { loadMemories } from "./data";
-import { MemoryCards } from "./cards";
+import { MemoryMarkers, isInMapBounds } from "./cards";
 import { AutoTour } from "./tour";
 import { UI } from "./ui";
 import { CALIBRATION, MODEL_TRANSFORM, SURROUNDINGS } from "./config";
@@ -11,8 +11,8 @@ import { CALIBRATION, MODEL_TRANSFORM, SURROUNDINGS } from "./config";
 async function main(): Promise<void> {
   const container = document.getElementById("app")!;
   const ctx = createSceneContext(container);
-  const cards = new MemoryCards();
-  ctx.scene.add(cards.group);
+  const markers = new MemoryMarkers();
+  ctx.scene.add(markers.group);
 
   const tour = new AutoTour(ctx.camera, ctx.controls, (active) =>
     ui.setTourActive(active)
@@ -20,7 +20,7 @@ async function main(): Promise<void> {
 
   const ui = new UI({
     onFilterChange: (predicate) => {
-      const visible = cards.applyFilter(predicate);
+      const visible = markers.applyFilter(predicate);
       ui.updateCount(visible, total, source);
     },
     onTourToggle: () => tour.toggle(),
@@ -59,20 +59,23 @@ async function main(): Promise<void> {
   }
 
   const { memories, source } = loaded;
-  const total = memories.length;
+  const mapMemories = memories.filter(isInMapBounds);
+  const total = mapMemories.length;
   ui.setLoadingText("思い出を配置中…");
 
   const raycaster = new THREE.Raycaster();
-  cards.spawn(memories, (x, z) => snapToGround(x, z, groundTargets, raycaster));
+  await markers.spawn(mapMemories, (x, z) =>
+    snapToGround(x, z, groundTargets, raycaster)
+  );
 
-  ui.buildFilters(memories);
+  ui.buildFilters(mapMemories);
   ui.updateCount(total, total, source);
   ui.finishLoading();
   if (source === "demo") {
     ui.toast("Supabase 未接続のためデモデータを表示しています（.env を設定してください）");
   }
 
-  // --- クリックでカード選択 ---
+  // --- クリックで思い出選択 ---
   const pointer = new THREE.Vector2();
   let downAt = { x: 0, y: 0, t: 0 };
   ctx.renderer.domElement.addEventListener("pointerdown", (e) => {
@@ -90,10 +93,10 @@ async function main(): Promise<void> {
       (e.clientX / innerWidth) * 2 - 1,
       -(e.clientY / innerHeight) * 2 + 1
     );
-    const memory = cards.pick(pointer, ctx.camera);
+    const memory = markers.pick(pointer, ctx.camera);
     if (memory) {
       ui.showDetail(memory);
-      const worldPos = cards.worldPositionOf(memory);
+      const worldPos = markers.worldPositionOf(memory);
       if (worldPos) focusTarget.copy(worldPos);
       focusing = true;
     } else {
@@ -101,7 +104,7 @@ async function main(): Promise<void> {
     }
   });
 
-  // カメラフォーカス（クリックしたカードへ滑らかに寄る）
+  // カメラフォーカス（クリックしたマーカーへ滑らかに寄る）
   const focusTarget = new THREE.Vector3();
   let focusing = false;
   addEventListener("wheel", () => (focusing = false), { passive: true });
@@ -128,7 +131,7 @@ async function main(): Promise<void> {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.1);
 
-    cards.update(dt, ctx.camera);
+    markers.update(dt, ctx.camera);
     tour.update(dt);
 
     if (focusing) {
@@ -208,7 +211,7 @@ async function setupDebugGui(
 
   console.info(
     "[debug] 値を調整後「設定を console に出力」を押し、src/config.ts に書き戻してください。" +
-      "※ Geo 系とカードの接地位置は再計算が必要なためリロードして反映確認してください。"
+      "※ Geo 系とマーカーの接地位置は再計算が必要なためリロードして反映確認してください。"
   );
 }
 

@@ -1,6 +1,5 @@
 import type { Memory } from "./data";
 import { GENRE_COLORS, GENRE_FALLBACK_COLOR } from "./config";
-import { createFallbackCardTexture } from "./cardTexture";
 
 export interface UICallbacks {
   onFilterChange: (predicate: (memory: Memory) => boolean) => void;
@@ -105,12 +104,6 @@ export class UI {
   }
 
   showDetail(memory: Memory): void {
-    const img = document.getElementById("detail-img") as HTMLImageElement;
-    if (memory.card_url) {
-      img.src = memory.card_url;
-    } else {
-      img.src = (createFallbackCardTexture(memory).image as HTMLCanvasElement).toDataURL();
-    }
     const genre = memory.genre || "上記以外";
     const genreTag = document.getElementById("detail-genre")!;
     genreTag.textContent = genre;
