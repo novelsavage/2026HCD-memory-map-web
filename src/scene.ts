@@ -48,8 +48,7 @@ export function createSceneContext(container: HTMLElement): SceneContext {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  // threshold=1.0: 通常マテリアル（カード等）は光らせず、
-  // 加算合成で1.0を超えるワイヤーフレームの重なりや発光体だけをブルームさせる
+  // threshold=1.0: 加算合成の思い出テキストなど輝度>1 の要素だけブルーム
   const bloom = new UnrealBloomPass(
     new THREE.Vector2(innerWidth, innerHeight),
     0.85, // strength

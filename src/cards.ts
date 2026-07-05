@@ -7,6 +7,7 @@ import { GENRE_COLORS, GENRE_FALLBACK_COLOR, MAP_BOUNDS, MARKER } from "./config
 interface MarkerEntry {
   memory: Memory;
   root: THREE.Group;
+  pole: THREE.Mesh;
   label: THREE.Mesh;
   fadeTargets: THREE.MeshBasicMaterial[];
   spawnDelay: number;
@@ -53,9 +54,11 @@ export class MemoryMarkers {
 
       const p = projectLatLon(memory.latitude!, memory.longitude!);
       const groundY = groundHeightAt(p.x, p.z);
-      root.position.set(p.x, groundY + MARKER.groundOffsetY, p.z);
+      // root = 接地点（ピン中心）。ポールは上方向、テキストはその上。
+      root.position.set(p.x, groundY, p.z);
 
-      this.buildPole(root, genreColor, fadeTargets);
+      this.buildPin(root, genreColor, fadeTargets);
+      const pole = this.buildPole(root, genreColor, fadeTargets);
       const label = await this.buildLabel(root, memory, fadeTargets);
 
       const stagger = Math.min(
@@ -66,6 +69,7 @@ export class MemoryMarkers {
       this.entries.push({
         memory,
         root,
+        pole,
         label,
         fadeTargets,
         spawnDelay: MARKER.staggerBaseDelay + stagger,
@@ -75,18 +79,81 @@ export class MemoryMarkers {
       this.group.add(root);
       spawnIndex++;
     }
+
+    this.assignLabelStacks();
   }
 
-  /** 根元(y=0)から地面(y=-groundOffsetY)まで */
-  private buildPole(
+  /** 近接マーカーはラベルを積み、ポールを同じ高さまで延長する。 */
+  private assignLabelStacks(): void {
+    const active = this.entries.filter((e) => e.visible);
+    const radiusSq = MARKER.stackRadius * MARKER.stackRadius;
+
+    for (const entry of active) {
+      const px = entry.root.position.x;
+      const pz = entry.root.position.z;
+
+      const neighbors = active.filter((other) => {
+        const dx = other.root.position.x - px;
+        const dz = other.root.position.z - pz;
+        return dx * dx + dz * dz <= radiusSq;
+      });
+
+      neighbors.sort((a, b) => {
+        const ta = a.memory.captured_at ?? "";
+        const tb = b.memory.captured_at ?? "";
+        if (ta !== tb) return ta.localeCompare(tb);
+        return a.memory.id.localeCompare(b.memory.id);
+      });
+
+      const idx = neighbors.findIndex((n) => n.memory.id === entry.memory.id);
+      const stackIndex = Math.min(
+        Math.max(idx, 0),
+        MARKER.stackMaxLevels - 1
+      );
+      const poleHeight =
+        MARKER.groundOffsetY + stackIndex * MARKER.stackHeightStep;
+      entry.pole.scale.y = poleHeight / MARKER.groundOffsetY;
+      entry.pole.position.y = poleHeight / 2;
+      entry.label.position.y = poleHeight;
+    }
+  }
+
+  /** 接地点のピン（root 原点 = 地面） */
+  private buildPin(
     root: THREE.Group,
     color: THREE.Color,
     fadeTargets: THREE.MeshBasicMaterial[]
   ): void {
+    const pinMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    fadeTargets.push(pinMat);
+
+    const pin = new THREE.Mesh(
+      new THREE.SphereGeometry(MARKER.pinRadius, 12, 10),
+      pinMat
+    );
+    pin.position.y = MARKER.pinRadius;
+    pin.renderOrder = 2;
+    root.add(pin);
+  }
+
+  /** 地面(y=0)からポール上端(y=groundOffsetY)まで */
+  private buildPole(
+    root: THREE.Group,
+    color: THREE.Color,
+    fadeTargets: THREE.MeshBasicMaterial[]
+  ): THREE.Mesh {
     const poleMat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.9
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
     fadeTargets.push(poleMat);
 
@@ -100,8 +167,10 @@ export class MemoryMarkers {
       ),
       poleMat
     );
-    pole.position.y = -height / 2;
+    pole.position.y = height / 2;
+    pole.renderOrder = 1;
     root.add(pole);
+    return pole;
   }
 
   private async buildLabel(
@@ -115,16 +184,19 @@ export class MemoryMarkers {
       map: texture,
       transparent: true,
       side: THREE.DoubleSide,
-      depthWrite: false
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
     fadeTargets.push(labelMat);
 
-    const label = new THREE.Mesh(
-      new THREE.PlaneGeometry(planeWidth, planeHeight),
-      labelMat
-    );
+    // PlaneGeometry の原点を中央から左上へ移す。
+    // ポール上端を旗の左上Pivotとして、文字面を右・下へ広げる。
+    const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+    geometry.translate(planeWidth / 2, -planeHeight / 2, 0);
+    const label = new THREE.Mesh(geometry, labelMat);
     label.name = "label";
-    label.position.y = MARKER.labelOffsetY;
+    label.position.y = MARKER.groundOffsetY;
+    label.renderOrder = 3;
     root.add(label);
     return label;
   }
@@ -152,7 +224,7 @@ export class MemoryMarkers {
       const alpha = entry.visible ? entry.appear : 0;
       for (let i = 0; i < entry.fadeTargets.length; i++) {
         const mat = entry.fadeTargets[i];
-        mat.opacity = i === 0 ? alpha * 0.9 : alpha;
+        mat.opacity = alpha;
       }
     }
   }
@@ -163,6 +235,7 @@ export class MemoryMarkers {
       entry.visible = predicate(entry.memory);
       if (entry.visible) count++;
     }
+    this.assignLabelStacks();
     return count;
   }
 

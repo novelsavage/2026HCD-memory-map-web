@@ -2,8 +2,7 @@ import * as THREE from "three";
 import type { Memory } from "./data";
 import { GENRE_COLORS, GENRE_FALLBACK_COLOR, MARKER } from "./config";
 
-const FONT =
-  "'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif";
+const FONT = "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif";
 
 export interface TextLabelResult {
   texture: THREE.CanvasTexture;
@@ -20,6 +19,12 @@ function ensureFont(): Promise<void> {
       .then(() => undefined);
   }
   return fontReady;
+}
+
+function brightenHex(hex: string, mix = 0.55): string {
+  const c = new THREE.Color(hex);
+  c.lerp(new THREE.Color(0xffffff), mix);
+  return `#${c.getHexString()}`;
 }
 
 function wrapLines(
@@ -72,7 +77,7 @@ function wrapLines(
   return lines.length > 0 ? lines : [""];
 }
 
-/** memory_text を Canvas テクスチャに描く（Unity PinText 相当） */
+/** memory_text を Canvas テクスチャに描く（Unity PinText 相当・背景なし） */
 export async function createTextLabelTexture(
   memory: Memory
 ): Promise<TextLabelResult> {
@@ -82,7 +87,7 @@ export async function createTextLabelTexture(
   const fontSize = MARKER.labelFontSize;
   const lineHeight = fontSize * MARKER.labelLineHeight;
   const canvasWidth = MARKER.labelCanvasWidth;
-  const maxTextWidth = canvasWidth - pad * 2 - MARKER.labelBorderWidth;
+  const maxTextWidth = canvasWidth - pad * 2;
 
   const canvas = document.createElement("canvas");
   canvas.width = canvasWidth;
@@ -102,18 +107,16 @@ export async function createTextLabelTexture(
   const contentHeight = pad * 2 + lines.length * lineHeight;
   canvas.height = Math.max(Math.ceil(contentHeight), 64);
 
-  ctx.fillStyle = "rgba(5, 13, 8, 0.82)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = genreColor;
-  ctx.fillRect(0, 0, MARKER.labelBorderWidth, canvas.height);
-
-  ctx.fillStyle = "#e8f5ec";
+  // 透明背景 + ジャンル色のグロー（UnrealBloomPass threshold>1 用）
   ctx.font = `${fontSize}px ${FONT}`;
   ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  ctx.shadowColor = genreColor;
+  ctx.shadowBlur = MARKER.labelGlowBlur;
+  ctx.fillStyle = brightenHex(genreColor);
   let y = pad;
   for (const line of lines) {
-    ctx.fillText(line, pad + MARKER.labelBorderWidth, y);
+    ctx.fillText(line, pad, y);
     y += lineHeight;
   }
 

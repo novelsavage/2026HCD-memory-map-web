@@ -53,31 +53,36 @@ export const GENRE_COLORS: Record<string, string> = {
 };
 export const GENRE_FALLBACK_COLOR = "#9aa7b4";
 
-// 思い出マーカー（Unity Pin.prefab 寸法 × Web キャンパス scale 3.51）
+// 思い出マーカー（Unity Pin.prefab / MemoryGeoProjector 相当）
 // Unity: unitsPerMeter=0.29, worldHeight=10, PinText 32×8 unit
+// 位置・高さは geo ワールド（1 unit ≈ 1 m）。キャンパス MODEL_TRANSFORM.scale は掛けない。
 const UNITY_UNITS_PER_METER = 0.29;
-const unityPin = (units: number): number =>
-  (units / UNITY_UNITS_PER_METER) * MODEL_TRANSFORM.scale;
+const unityWorld = (units: number): number => units / UNITY_UNITS_PER_METER;
+
+/** 3D ラベル寸法の追い縮小 */
+const MARKER_TEXT_SCALE = 0.62;
 
 export const MARKER = {
-  /** 根元を地面より上に置く（Unity worldHeight=10 を換算 + キャンパス scale） */
-  groundOffsetY: unityPin(10),
-  /** 根元から地面までのポール（= groundOffsetY） */
-  poleRadius: unityPin(0.05),
-  /** PinText anchoredPosition.y */
-  labelOffsetY: unityPin(4),
-  /** テキスト Plane の高さ（幅は Canvas アスペクト比から自動） */
-  labelPlaneHeight: unityPin(8),
+  textScale: MARKER_TEXT_SCALE,
+  /** 地面からポール上端まで（Unity worldHeight=10） */
+  groundOffsetY: unityWorld(10),
+  poleRadius: unityWorld(0.12),
+  pinRadius: unityWorld(0.2),
+  /** 左上Pivotのテキスト Plane（幅は Canvas アスペクト比から自動） */
+  labelPlaneHeight: unityWorld(5) * MARKER_TEXT_SCALE,
   appearDuration: 1.2,
   staggerStep: 0.15,
   staggerMax: 3.0,
   staggerBaseDelay: 0.4,
   labelCanvasWidth: 1024,
-  labelFontSize: 72,
+  labelFontSize: Math.round(72 * MARKER_TEXT_SCALE),
   labelLineHeight: 1.35,
   labelMaxLines: 5,
-  labelPadding: 40,
-  labelBorderWidth: 10
+  labelPadding: Math.round(24 * MARKER_TEXT_SCALE),
+  labelGlowBlur: Math.round(22 * MARKER_TEXT_SCALE),
+  stackRadius: 80,
+  stackHeightStep: unityWorld(5) * MARKER_TEXT_SCALE,
+  stackMaxLevels: 8
 };
 
 export const EVENT_ID =
