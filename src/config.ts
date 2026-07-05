@@ -25,6 +25,23 @@ export const MODEL_TRANSFORM = {
   autoCenterThreshold: 2000
 };
 
+// OCR WebApp (capture-form.tsx) の MAP_BOUNDS と同一。
+// この範囲内の思い出は地面に接地、範囲外は上空に浮遊させる。
+// scripts/fetch-osm.mjs の取得範囲もこれ。
+export const MAP_BOUNDS = {
+  north: 35.846503431837974,
+  west: 139.9396836960089,
+  south: 35.824255102680205,
+  east: 139.96551577769122
+};
+
+// OSM 周辺市街地（surroundings.ts）
+export const SURROUNDINGS = {
+  // キャンパスモデルの地面高さ（bbox min.y ≒ 13.5）に合わせた台地の高さ
+  baseY: 13.2,
+  buildingDefaultHeight: 6.5
+};
+
 // OCR WebApp (capture-form.tsx) と同じジャンル配色
 export const GENRE_COLORS: Record<string, string> = {
   恋愛: "#ec9bb6",
@@ -40,10 +57,10 @@ export const CARD = {
   size: 9, // カード一辺 (world units ≒ m)
   poleHeightMin: 5,
   poleHeightMax: 11,
-  floatRadiusMin: 240,
-  floatRadiusMax: 340,
-  floatHeightMin: 45,
-  floatHeightMax: 100
+  floatRadiusMin: 260,
+  floatRadiusMax: 380,
+  floatHeightMin: 120,
+  floatHeightMax: 180
 };
 
 export const EVENT_ID =

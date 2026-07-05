@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createSceneContext, HOME_CAMERA_POS } from "./scene";
 import { loadCampusModel, snapToGround } from "./campus";
+import { loadSurroundings } from "./surroundings";
 import { loadMemories } from "./data";
 import { MemoryCards } from "./cards";
 import { AutoTour } from "./tour";
@@ -39,12 +40,27 @@ async function main(): Promise<void> {
   ]);
   ctx.scene.add(campus.group);
 
+  // OSM 周辺市街地（キャンパスモデルの XZ 範囲内の建物は生成しない）
+  ui.setLoadingText("周辺の街並みを生成中…");
+  const campusBox = new THREE.Box3().setFromObject(campus.group);
+  const surroundings = await loadSurroundings(
+    new THREE.Box2(
+      new THREE.Vector2(campusBox.min.x, campusBox.min.z),
+      new THREE.Vector2(campusBox.max.x, campusBox.max.z)
+    )
+  );
+  const groundTargets = [...campus.raycastTargets];
+  if (surroundings) {
+    ctx.scene.add(surroundings.group);
+    groundTargets.push(...surroundings.raycastTargets);
+  }
+
   const { memories, source } = loaded;
   const total = memories.length;
   ui.setLoadingText("思い出を配置中…");
 
   const raycaster = new THREE.Raycaster();
-  cards.spawn(memories, (x, z) => snapToGround(x, z, campus.raycastTargets, raycaster));
+  cards.spawn(memories, (x, z) => snapToGround(x, z, groundTargets, raycaster));
 
   ui.buildFilters(memories);
   ui.updateCount(total, total, source);

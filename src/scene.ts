@@ -26,7 +26,7 @@ export function createSceneContext(container: HTMLElement): SceneContext {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050d08);
-  scene.fog = new THREE.FogExp2(0x050d08, 0.0009);
+  scene.fog = new THREE.FogExp2(0x050d08, 0.0005);
 
   const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.5, 6000);
   camera.position.copy(HOME_CAMERA_POS);
@@ -36,7 +36,7 @@ export function createSceneContext(container: HTMLElement): SceneContext {
   controls.dampingFactor = 0.06;
   controls.maxPolarAngle = Math.PI * 0.49;
   controls.minDistance = 15;
-  controls.maxDistance = 1200;
+  controls.maxDistance = 2800;
   controls.target.set(0, 0, 0);
 
   // ライティング（ホログラム調なので控えめ + 青みがかった夜）
@@ -104,7 +104,7 @@ function addStars(scene: THREE.Scene): void {
 }
 
 function addGround(scene: THREE.Scene): void {
-  const grid = new THREE.GridHelper(1600, 80, 0x1a5c38, 0x0e3320);
+  const grid = new THREE.GridHelper(4000, 100, 0x1a5c38, 0x0e3320);
   (grid.material as THREE.Material).transparent = true;
   (grid.material as THREE.Material).opacity = 0.28;
   grid.position.y = -1.2;

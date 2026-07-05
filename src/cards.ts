@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Memory } from "./data";
 import { projectLatLon } from "./geo";
 import { loadCardTexture } from "./cardTexture";
-import { CALIBRATION, CARD, GENRE_COLORS, GENRE_FALLBACK_COLOR } from "./config";
+import { CARD, GENRE_COLORS, GENRE_FALLBACK_COLOR, MAP_BOUNDS } from "./config";
 
 interface CardEntry {
   memory: Memory;
@@ -30,10 +30,10 @@ export class MemoryCards {
 
   spawn(memories: Memory[], groundHeightAt: (x: number, z: number) => number): void {
     let floatIndex = 0;
-    const floatCount = memories.filter((m) => !this.isOnCampus(m)).length;
+    const floatCount = memories.filter((m) => !this.isGrounded(m)).length;
 
     memories.forEach((memory, index) => {
-      const onCampus = this.isOnCampus(memory);
+      const onCampus = this.isGrounded(memory);
       const root = new THREE.Group();
       const genreColor = new THREE.Color(
         GENRE_COLORS[memory.genre || ""] || GENRE_FALLBACK_COLOR
@@ -52,7 +52,7 @@ export class MemoryCards {
         this.buildPole(root, poleHeight, genreColor);
         this.buildCard(root, memory, poleHeight + CARD.size * 0.62);
       } else {
-        // 大学外の思い出：キャンパス上空のリングに浮かべる
+        // 地図範囲外の思い出：キャンパス上空のリングに浮かべる
         floating = true;
         const angle =
           (floatIndex / Math.max(floatCount, 1)) * Math.PI * 2 +
@@ -86,11 +86,15 @@ export class MemoryCards {
     });
   }
 
-  private isOnCampus(memory: Memory): boolean {
-    if (!memory.reitaku_dummy) return false;
+  /** 地図（OCR WebApp と同じ MAP_BOUNDS）の範囲内なら実座標に接地する */
+  private isGrounded(memory: Memory): boolean {
     if (memory.latitude == null || memory.longitude == null) return false;
-    const p = projectLatLon(memory.latitude, memory.longitude);
-    return p.distanceMeters <= CALIBRATION.maxDistanceFromOriginMeters;
+    return (
+      memory.latitude >= MAP_BOUNDS.south &&
+      memory.latitude <= MAP_BOUNDS.north &&
+      memory.longitude >= MAP_BOUNDS.west &&
+      memory.longitude <= MAP_BOUNDS.east
+    );
   }
 
   private buildPole(root: THREE.Group, height: number, color: THREE.Color): void {
