@@ -9,6 +9,8 @@ import { UI } from "./ui";
 import { CALIBRATION, MODEL_TRANSFORM, SURROUNDINGS } from "./config";
 
 async function main(): Promise<void> {
+  const plateauMode = new URLSearchParams(location.search).has("plateau");
+  document.getElementById("plateau-attribution")!.hidden = !plateauMode;
   const container = document.getElementById("app")!;
   const ctx = createSceneContext(container);
   const cards = new MemoryCards();

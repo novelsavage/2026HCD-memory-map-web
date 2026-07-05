@@ -3,7 +3,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { projectLatLon } from "./geo";
 import { SURROUNDINGS } from "./config";
 
-interface OsmData {
+interface SurroundingsData {
   bounds: { south: number; west: number; north: number; east: number };
   buildings: { h: number; pts: [number, number][] }[];
   roads: { major: boolean; pts: [number, number][] }[];
@@ -20,9 +20,8 @@ export interface Surroundings {
 }
 
 /**
- * OSM 由来の周辺市街地（scripts/fetch-osm.mjs の出力）を
- * 発光ワイヤーフレーム調で生成する。?nocity で無効化。
- * データ出典: © OpenStreetMap contributors (ODbL)
+ * OSM または PLATEAU 由来の周辺市街地を発光ワイヤーフレーム調で生成する。
+ * ?plateau で建物をPLATEAUに切り替え、?nocity で周辺市街地を無効化。
  */
 export async function loadSurroundings(
   campusBoundsXZ: THREE.Box2,
@@ -31,12 +30,14 @@ export async function loadSurroundings(
 ): Promise<Surroundings | null> {
   if (new URLSearchParams(location.search).has("nocity")) return null;
 
-  const res = await fetch(`${import.meta.env.BASE_URL}osm-surroundings.json`);
+  const plateauMode = new URLSearchParams(location.search).has("plateau");
+  const dataFile = plateauMode ? "plateau-surroundings.json" : "osm-surroundings.json";
+  const res = await fetch(`${import.meta.env.BASE_URL}${dataFile}`);
   if (!res.ok) {
-    console.warn("osm-surroundings.json が無いため周辺市街地はスキップ");
+    console.warn(`${dataFile} が無いため周辺市街地はスキップ`);
     return null;
   }
-  const data = (await res.json()) as OsmData;
+  const data = (await res.json()) as SurroundingsData;
 
   const group = new THREE.Group();
   group.name = "surroundings";
@@ -130,7 +131,8 @@ export async function loadSurroundings(
   }
 
   console.info(
-    `[surroundings] buildings=${solidGeos.length} roads=${data.roads.length} ` +
+    `[surroundings:${plateauMode ? "plateau" : "osm"}] ` +
+      `buildings=${solidGeos.length} roads=${data.roads.length} ` +
       `stations=${data.stations.map((s) => s.name).join(",")}`
   );
   return { group, raycastTargets, baseY };

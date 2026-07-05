@@ -7,6 +7,7 @@
 - `?holo` でホログラム調（発光ワイヤーフレーム）表示に切り替え
 - 周辺市街地（南柏駅まで約2.3km四方）を OSM データの発光ワイヤーフレームで描画
   （地図データ © OpenStreetMap contributors, ODbL）
+- `?plateau` で周辺建物を Project PLATEAU 柏市LOD1へ差し替えて比較
 - 思い出カードをジャンル色のピン付きで緯度経度どおりに配置
 - 大学外の思い出はキャンパス上空のリングに浮遊
 - ジャンル / 年代フィルター、カードクリックで詳細パネル + カメラフォーカス
@@ -35,6 +36,8 @@ npm run dev
   - `reitaku_dummy: true=大学内 / false=大学外`（大学外は上空に浮遊表示）
 - **Cloudflare R2**: `card_url` のカード PNG。CORS で読めない場合は
   `memory_text` から Canvas でカードを自動生成してフォールバックする
+- **周辺地図**: 通常は OpenStreetMap。`?plateau` 時は建物だけ国土交通省
+  Project PLATEAU「3D都市モデル（柏市・2020年度）」、道路・鉄道・駅はOSM
 
 ## キャンパスモデル
 
@@ -67,6 +70,7 @@ Unity 版 MemoryGeoProjector と同じ正距円筒近似で、原点
 | `?demo=1` | Supabase を使わずデモデータ表示 |
 | `?debug=1` | キャリブレーション GUI + 軸/原点マーカー表示 |
 | `?holo` | ホログラム調（発光ワイヤーフレーム）表示 |
+| `?plateau` | 周辺建物をPLATEAU柏市LOD1の実測高さ付きデータへ差し替え |
 | `?nocity` | 周辺市街地を非表示 |
 
 ## デプロイ
