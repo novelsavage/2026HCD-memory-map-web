@@ -123,6 +123,36 @@
     #loading p { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    #compass {
+      position: fixed; right: 16px; bottom: 76px; z-index: 10;
+      width: 62px; height: 62px; border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      cursor: pointer;
+      box-shadow: 0 0 14px rgba(74, 222, 128, 0.12);
+    }
+    #compass:hover { border-color: var(--accent); }
+    #compass-dial {
+      position: absolute; inset: 0;
+      transition: none;
+      font-family: "Bitcount", monospace; font-size: 10px;
+    }
+    #compass-dial span { position: absolute; color: var(--muted); }
+    #compass-dial .n {
+      top: 5px; left: 50%; transform: translateX(-50%);
+      color: var(--accent); font-weight: 700;
+      text-shadow: 0 0 6px rgba(74, 222, 128, 0.7);
+    }
+    #compass-dial .s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+    #compass-dial .e { right: 6px; top: 50%; transform: translateY(-50%); }
+    #compass-dial .w { left: 6px; top: 50%; transform: translateY(-50%); }
+    #compass-dial .needle {
+      position: absolute; left: 50%; top: 50%;
+      width: 2px; height: 16px;
+      transform: translate(-50%, -100%);
+      background: linear-gradient(to top, transparent, var(--accent));
+    }
+
     #toast {
       position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%);
       z-index: 30; background: var(--panel); border: 1px solid var(--line);
@@ -160,6 +190,15 @@
     <p class="text" id="detail-text"></p>
     <p class="nick" id="detail-nick"></p>
   </aside>
+
+  <div class="overlay">
+    <div id="compass" title="クリックで北向きにリセット">
+      <div id="compass-dial">
+        <span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span>
+        <div class="needle"></div>
+      </div>
+    </div>
+  </div>
 
   <div id="loading">
     <div class="ring"></div>

@@ -26,7 +26,7 @@ export function createSceneContext(container: HTMLElement): SceneContext {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050d08);
-  scene.fog = new THREE.FogExp2(0x050d08, 0.0005);
+  scene.fog = new THREE.FogExp2(0x050d08, 0.0008);
 
   const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.5, 6000);
   camera.position.copy(HOME_CAMERA_POS);
@@ -85,7 +85,7 @@ function addStars(scene: THREE.Scene): void {
     // 上半球にランダム配置
     const radius = 1800 + Math.random() * 1600;
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 0.95); // 天頂寄り
+    const phi = Math.acos(0.3 + Math.random() * 0.68); // 仰角17°以上（市街地と混ざらない）
     positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
     positions[i * 3 + 1] = radius * Math.cos(phi);
     positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);

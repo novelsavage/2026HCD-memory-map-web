@@ -1,7 +1,8 @@
 // OSM (Overpass API) から周辺エリアの建物・道路・鉄道・駅を取得して
 // public/osm-surroundings.json に保存する。ネットワーク必須・手動実行:
 //   node scripts/fetch-osm.mjs
-// 範囲は OCR WebApp (capture-form.tsx) の MAP_BOUNDS と同一。
+// 範囲は OCR WebApp (capture-form.tsx) の MAP_BOUNDS を基準に、
+// 東側だけ新柏駅 (35.8385, 139.96665) を含むよう拡張してある。
 // データライセンス: © OpenStreetMap contributors (ODbL)
 
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -10,7 +11,7 @@ const BBOX = {
   south: 35.824255102680205,
   west: 139.9396836960089,
   north: 35.846503431837974,
-  east: 139.96551577769122
+  east: 139.972 // OCR WebApp は 139.96552。新柏駅とその周辺を含むため拡張
 };
 
 const bbox = `${BBOX.south},${BBOX.west},${BBOX.north},${BBOX.east}`;

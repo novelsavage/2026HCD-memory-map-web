@@ -104,6 +104,16 @@ async function main(): Promise<void> {
   addEventListener("wheel", () => (focusing = false), { passive: true });
   ctx.renderer.domElement.addEventListener("pointerdown", () => (focusing = false));
 
+  // --- コンパス（カメラ方位に追従。クリックで北向きへ） ---
+  const compassDial = document.getElementById("compass-dial")!;
+  document.getElementById("compass")!.addEventListener("click", () => {
+    const offset = ctx.camera.position.clone().sub(ctx.controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta = 0; // 北向き（-Z を向く）
+    offset.setFromSpherical(spherical);
+    ctx.camera.position.copy(ctx.controls.target).add(offset);
+  });
+
   // --- デバッグ（キャリブレーション用）: ?debug=1 ---
   if (new URLSearchParams(location.search).has("debug")) {
     setupDebugGui(ctx.scene, campus.group);
@@ -130,6 +140,9 @@ async function main(): Promise<void> {
     }
 
     ctx.controls.update();
+    compassDial.style.transform = `rotate(${THREE.MathUtils.radToDeg(
+      ctx.controls.getAzimuthalAngle()
+    )}deg)`;
     ctx.render();
   }
   animate();

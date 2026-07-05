@@ -86,13 +86,16 @@ export async function loadSurroundings(
     group.add(solid);
     raycastTargets.push(solid);
 
-    // 稜線: 加算合成グリーン（重なりがブルームで発光する）
+    // 稜線: 加算合成グリーン。
+    // 線は距離に関係なく常に 1px 幅で描かれるため、遠景では 1 ピクセルに
+    // 何本も重なって加算飽和し「明るい塊」になる（ムラの原因）。
+    // opacity を低くして飽和条件を上げ、残りはフォグの距離減衰に任せる。
     const edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(merged, 30),
       new THREE.LineBasicMaterial({
         color: 0x2effa0,
         transparent: true,
-        opacity: 0.38,
+        opacity: 0.2,
         blending: THREE.AdditiveBlending,
         depthWrite: false
       })
@@ -156,7 +159,7 @@ function createStationMarker(
 
   // 光の柱
   const beam = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.2, 1.2, 60, 8, 1, true),
+    new THREE.CylinderGeometry(1.5, 1.5, 90, 8, 1, true),
     new THREE.MeshBasicMaterial({
       color: 0x7dffce,
       transparent: true,
@@ -166,7 +169,7 @@ function createStationMarker(
       side: THREE.DoubleSide
     })
   );
-  beam.position.y = 30;
+  beam.position.y = 45;
   marker.add(beam);
 
   // ラベル（Sprite = 常にカメラを向く）
@@ -187,8 +190,8 @@ function createStationMarker(
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
   );
-  sprite.scale.set(80, 20, 1);
-  sprite.position.y = 72;
+  sprite.scale.set(120, 30, 1);
+  sprite.position.y = 105;
   marker.add(sprite);
 
   return marker;
