@@ -23,7 +23,7 @@ export function createFallbackCardTexture(memory: Memory): THREE.CanvasTexture {
   ctx.fillStyle = genreColor;
   ctx.fillRect(0, 0, size, 56);
   ctx.fillStyle = "#1a2026";
-  ctx.font = "bold 30px 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif";
+  ctx.font = "bold 30px 'DotGothic16', 'Hiragino Kaku Gothic ProN', sans-serif";
   ctx.textBaseline = "middle";
   ctx.fillText(genre, 20, 30);
   if (memory.era) {
@@ -35,7 +35,7 @@ export function createFallbackCardTexture(memory: Memory): THREE.CanvasTexture {
   // 本文（文字単位で折り返し）
   ctx.fillStyle = "#22303a";
   const fontSize = 36;
-  ctx.font = `${fontSize}px 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif`;
+  ctx.font = `${fontSize}px 'DotGothic16', 'Hiragino Kaku Gothic ProN', sans-serif`;
   const text = memory.memory_text || "";
   const maxWidth = size - 80;
   const lineHeight = fontSize * 1.6;
@@ -58,7 +58,7 @@ export function createFallbackCardTexture(memory: Memory): THREE.CanvasTexture {
   // ニックネーム
   if (memory.nickname) {
     ctx.fillStyle = "#5d707e";
-    ctx.font = "26px 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif";
+    ctx.font = "26px 'DotGothic16', 'Hiragino Kaku Gothic ProN', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`— ${memory.nickname}`, size - 36, size - 44);
   }

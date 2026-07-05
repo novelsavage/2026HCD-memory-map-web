@@ -25,8 +25,8 @@ export function createSceneContext(container: HTMLElement): SceneContext {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x050912);
-  scene.fog = new THREE.FogExp2(0x050912, 0.0009);
+  scene.background = new THREE.Color(0x050d08);
+  scene.fog = new THREE.FogExp2(0x050d08, 0.0009);
 
   const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.5, 6000);
   camera.position.copy(HOME_CAMERA_POS);
@@ -40,8 +40,8 @@ export function createSceneContext(container: HTMLElement): SceneContext {
   controls.target.set(0, 0, 0);
 
   // ライティング（ホログラム調なので控えめ + 青みがかった夜）
-  scene.add(new THREE.HemisphereLight(0x3a5a80, 0x0a0f1a, 0.9));
-  const dir = new THREE.DirectionalLight(0x9fc9ff, 0.7);
+  scene.add(new THREE.HemisphereLight(0x3a8060, 0x0a1a10, 0.9));
+  const dir = new THREE.DirectionalLight(0x9fffcf, 0.7);
   dir.position.set(200, 320, 120);
   scene.add(dir);
 
@@ -93,7 +93,7 @@ function addStars(scene: THREE.Scene): void {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   const material = new THREE.PointsMaterial({
-    color: 0xbfe3ff,
+    color: 0xcfffe3,
     size: 2.2,
     sizeAttenuation: false,
     transparent: true,
@@ -104,9 +104,9 @@ function addStars(scene: THREE.Scene): void {
 }
 
 function addGround(scene: THREE.Scene): void {
-  const grid = new THREE.GridHelper(1600, 80, 0x1a3a5c, 0x0e2338);
+  const grid = new THREE.GridHelper(1600, 80, 0x1a5c38, 0x0e3320);
   (grid.material as THREE.Material).transparent = true;
-  (grid.material as THREE.Material).opacity = 0.45;
+  (grid.material as THREE.Material).opacity = 0.28;
   grid.position.y = -1.2;
   scene.add(grid);
 
@@ -115,8 +115,8 @@ function addGround(scene: THREE.Scene): void {
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext("2d")!;
   const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0, "rgba(46, 130, 200, 0.35)");
-  grad.addColorStop(0.7, "rgba(30, 80, 140, 0.10)");
+  grad.addColorStop(0, "rgba(52, 180, 120, 0.10)");
+  grad.addColorStop(0.7, "rgba(24, 100, 70, 0.03)");
   grad.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 256, 256);

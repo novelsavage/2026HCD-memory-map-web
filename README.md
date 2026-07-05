@@ -3,11 +3,14 @@
 麗澤大学ホームカミングデー 2026「思い出マップ」で来場者が書いてくれた思い出を、
 ブラウザだけで見られる 3D サイト。Unity 版（hcd-mapping-v2）の演出を Three.js で再現している。
 
-- 夜空 + 発光ワイヤーフレームのキャンパス 3D モデル（ホログラム調）
+- Google Earth (Photorealistic 3D Tiles) 由来のテクスチャ付きキャンパス 3D モデル
+- `?holo` でホログラム調（発光ワイヤーフレーム）表示に切り替え
 - 思い出カードをジャンル色のピン付きで緯度経度どおりに配置
 - 大学外の思い出はキャンパス上空のリングに浮遊
 - ジャンル / 年代フィルター、カードクリックで詳細パネル + カメラフォーカス
 - 一定時間操作が無いと自動オービットツアー（展示モード）
+
+UI は撮影 WebApp と同じフォント（Bitcount + DotGothic16）のダーク + グリーンテーマ。
 
 ## セットアップ
 
@@ -32,7 +35,9 @@ npm run dev
 
 `public/models/campus.glb` は Unity 版リポジトリ
 [ObaShion/hcd-mapping-v2](https://github.com/ObaShion/hcd-mapping-v2)（googleMaps ブランチ）の
-`Assets/ReitakuMap/Models/Re_map02.glb` を Draco 圧縮したもの（37MB → 7.7MB）。
+`Assets/ReitakuMap/Models/Re_map02.glb` を Draco + WebP 圧縮したもの（37MB → 7.7MB）。
+実体は Google Earth Photorealistic 3D Tiles を Blender で切り出した
+テクスチャ焼き込み（unlit）モデルで、`Re_mapblend.glb` と同一。
 
 再生成する場合:
 
@@ -56,7 +61,7 @@ Unity 版 MemoryGeoProjector と同じ正距円筒近似で、原点
 |---|---|
 | `?demo=1` | Supabase を使わずデモデータ表示 |
 | `?debug=1` | キャリブレーション GUI + 軸/原点マーカー表示 |
-| `?nowire` | ワイヤーフレーム無効化（低スペック向け） |
+| `?holo` | ホログラム調（発光ワイヤーフレーム）表示 |
 
 ## デプロイ
 

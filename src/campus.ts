@@ -10,8 +10,8 @@ export interface CampusModel {
 }
 
 /**
- * キャンパス GLB を読み込み、ホログラム調（暗い面 + 発光ワイヤーフレーム）に差し替える。
- * ?nowire でワイヤーフレームを無効化（低スペック環境向け）。
+ * キャンパス GLB（Google 3D Tiles 由来・テクスチャ焼き込み unlit）を読み込む。
+ * デフォルトはテクスチャ表示。?holo でホログラム調（暗い面 + 発光ワイヤーフレーム）。
  */
 export async function loadCampusModel(
   onProgress?: (ratio: number) => void
@@ -32,39 +32,23 @@ export async function loadCampusModel(
   group.name = "campus";
   group.add(gltf.scene);
 
-  const wireEnabled = !new URLSearchParams(location.search).has("nowire");
+  const holoMode = new URLSearchParams(location.search).has("holo");
   const raycastTargets: THREE.Object3D[] = [];
 
-  const baseMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0d1c2e,
-    roughness: 0.85,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.96
-  });
-  const wireMaterial = new THREE.MeshBasicMaterial({
-    color: 0x2ec8ff,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.10,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-
-  const wireMeshes: THREE.Mesh[] = [];
-  gltf.scene.traverse((obj) => {
-    if (obj instanceof THREE.Mesh) {
-      obj.material = baseMaterial;
-      raycastTargets.push(obj);
-      if (wireEnabled) {
-        const wire = new THREE.Mesh(obj.geometry, wireMaterial);
-        wireMeshes.push(wire);
-        obj.updateWorldMatrix(true, false);
-        wire.applyMatrix4(obj.matrixWorld);
+  if (holoMode) {
+    applyHologramLook(gltf.scene, group, raycastTargets);
+  } else {
+    // Google Earth の焼き込みテクスチャをそのまま表示。
+    // 夜のシーンに馴染むよう、わずかに暗く沈ませる。
+    gltf.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        raycastTargets.push(obj);
+        const material = obj.material as THREE.MeshBasicMaterial;
+        material.color.multiplyScalar(0.88);
+        if (material.map) material.map.anisotropy = 8;
       }
-    }
-  });
-  for (const wire of wireMeshes) group.add(wire);
+    });
+  }
 
   // 配置調整
   const t = MODEL_TRANSFORM;
@@ -86,6 +70,42 @@ export async function loadCampusModel(
   }
 
   return { group, raycastTargets };
+}
+
+/** ホログラム調（?holo）: 暗い面 + 加算合成ワイヤーフレーム */
+function applyHologramLook(
+  sceneRoot: THREE.Object3D,
+  group: THREE.Group,
+  raycastTargets: THREE.Object3D[]
+): void {
+  const baseMaterial = new THREE.MeshStandardMaterial({
+    color: 0x0d2e1c,
+    roughness: 0.85,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.96
+  });
+  const wireMaterial = new THREE.MeshBasicMaterial({
+    color: 0x2effa0,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.1,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  const wireMeshes: THREE.Mesh[] = [];
+  sceneRoot.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.material = baseMaterial;
+      raycastTargets.push(obj);
+      const wire = new THREE.Mesh(obj.geometry, wireMaterial);
+      wireMeshes.push(wire);
+      obj.updateWorldMatrix(true, false);
+      wire.applyMatrix4(obj.matrixWorld);
+    }
+  });
+  for (const wire of wireMeshes) group.add(wire);
 }
 
 /** 指定した XZ 位置の地面の高さを求める。ヒットしなければ 0。 */
