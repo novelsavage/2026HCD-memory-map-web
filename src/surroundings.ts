@@ -25,7 +25,6 @@ export interface Surroundings {
  * データ出典: © OpenStreetMap contributors (ODbL)
  */
 export async function loadSurroundings(
-  campusBoundsXZ: THREE.Box2,
   campusTargets: THREE.Object3D[],
   baseY: number
 ): Promise<Surroundings | null> {
@@ -41,36 +40,26 @@ export async function loadSurroundings(
   const group = new THREE.Group();
   group.name = "surroundings";
   const raycastTargets: THREE.Object3D[] = [];
-  // --- 台地プレーン（bbox 全域の暗い床） ---
+
+  // キャンパスモデルの XZ 占有グリッド（台地のくり抜き・重複除外の共通判定）
+  const footprint = new CampusFootprint(campusTargets);
+
+  // --- 台地プレート（キャンパスの真下だけくり抜いた暗い床） ---
+  // モデルは高低差が大きく、台地を縁の高さまで上げると低地が埋もれる。
+  // そこでモデル footprint のセルには床を張らず「穴」にする。
   const sw = projectLatLon(data.bounds.south, data.bounds.west);
   const ne = projectLatLon(data.bounds.north, data.bounds.east);
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(Math.abs(ne.x - sw.x), Math.abs(ne.z - sw.z)),
-    new THREE.MeshBasicMaterial({ color: 0x06110b })
-  );
-  plane.rotation.x = -Math.PI / 2;
-  plane.position.set((sw.x + ne.x) / 2, baseY - 0.3, (sw.z + ne.z) / 2);
-  group.add(plane);
-  raycastTargets.push(plane);
+  const plate = buildBasePlate(sw, ne, baseY, footprint);
+  group.add(plate);
+  raycastTargets.push(plate);
 
   // --- 建物（押し出し + エッジ発光） ---
-  // キャンパスモデルと重複する建物の除外は、バウンディング矩形だけだと
-  // 「矩形 − 実際の不定形モデル」の差の帯が建物ゼロの空白になってしまう。
-  // 矩形内の候補だけ実際にモデルへレイキャストして「本当にモデルの上」の時のみ除外する。
-  const raycaster = new THREE.Raycaster();
-  const isOnCampusModel = (x: number, z: number): boolean => {
-    raycaster.set(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0));
-    return raycaster.intersectObjects(campusTargets, false).length > 0;
-  };
   const solidGeos: THREE.BufferGeometry[] = [];
   for (const building of data.buildings) {
     const local = building.pts.map(([lon, lat]) => projectLatLon(lat, lon));
     const cx = local.reduce((s, p) => s + p.x, 0) / local.length;
     const cz = local.reduce((s, p) => s + p.z, 0) / local.length;
-    if (
-      campusBoundsXZ.containsPoint(new THREE.Vector2(cx, cz)) &&
-      isOnCampusModel(cx, cz)
-    ) {
+    if (footprint.covers(cx, cz)) {
       continue;
     }
 
@@ -115,9 +104,9 @@ export async function loadSurroundings(
 
   // --- 道路・鉄道（ポリライン） ---
   group.add(
-    buildLines(data.roads.filter((r) => !r.major), baseY + 0.25, 0x1d9c64, 0.32),
-    buildLines(data.roads.filter((r) => r.major), baseY + 0.35, 0x2effa0, 0.52),
-    buildLines(data.railways, baseY + 0.5, 0x7dffce, 0.72)
+    buildLines(data.roads.filter((r) => !r.major), baseY + 0.25, 0x1d9c64, 0.32, footprint),
+    buildLines(data.roads.filter((r) => r.major), baseY + 0.35, 0x2effa0, 0.52, footprint),
+    buildLines(data.railways, baseY + 0.5, 0x7dffce, 0.72, footprint)
   );
 
   // --- 駅マーカー + ラベル ---
@@ -136,12 +125,22 @@ function buildLines(
   ways: { pts: [number, number][] }[],
   y: number,
   color: number,
-  opacity: number
+  opacity: number,
+  footprint?: CampusFootprint
 ): THREE.LineSegments {
   const positions: number[] = [];
   for (const way of ways) {
     const local = way.pts.map(([lon, lat]) => projectLatLon(lat, lon));
     for (let i = 0; i < local.length - 1; i++) {
+      // キャンパスくり抜き内を通る区間は描かない（低地の上に浮くため）
+      if (
+        footprint?.covers(
+          (local[i].x + local[i + 1].x) / 2,
+          (local[i].z + local[i + 1].z) / 2
+        )
+      ) {
+        continue;
+      }
       positions.push(local[i].x, y, local[i].z, local[i + 1].x, y, local[i + 1].z);
     }
   }
@@ -203,4 +202,148 @@ function createStationMarker(
   marker.add(sprite);
 
   return marker;
+}
+
+/**
+ * キャンパスモデルの XZ 占有グリッド。
+ * 全頂点を cell(m) グリッドへラスタライズする（モデルの頂点間隔は
+ * cell より十分細かいので、覆われたセルに頂点が入らない隙間は出ない）。
+ * 台地のくり抜き・建物や道路の重複除外の判定に共通で使う。
+ */
+class CampusFootprint {
+  readonly cell: number;
+  readonly minX: number;
+  readonly minZ: number;
+  readonly minY: number;
+  readonly nx: number;
+  readonly nz: number;
+  private grid: Uint8Array;
+
+  constructor(campusTargets: THREE.Object3D[], cell = 5) {
+    this.cell = cell;
+    const box = new THREE.Box3();
+    for (const obj of campusTargets) box.expandByObject(obj);
+    this.minX = box.min.x - cell;
+    this.minZ = box.min.z - cell;
+    this.minY = box.min.y;
+    this.nx = Math.max(1, Math.ceil((box.max.x - this.minX) / cell) + 2);
+    this.nz = Math.max(1, Math.ceil((box.max.z - this.minZ) / cell) + 2);
+    this.grid = new Uint8Array(this.nx * this.nz);
+
+    const started = performance.now();
+    const v = new THREE.Vector3();
+    for (const obj of campusTargets) {
+      if (!(obj instanceof THREE.Mesh)) continue;
+      const position = (obj.geometry as THREE.BufferGeometry).getAttribute(
+        "position"
+      ) as THREE.BufferAttribute | undefined;
+      if (!position) continue;
+      obj.updateWorldMatrix(true, false);
+      for (let i = 0; i < position.count; i++) {
+        v.fromBufferAttribute(position, i);
+        v.applyMatrix4(obj.matrixWorld);
+        const ix = Math.floor((v.x - this.minX) / cell);
+        const iz = Math.floor((v.z - this.minZ) / cell);
+        if (ix >= 0 && iz >= 0 && ix < this.nx && iz < this.nz) {
+          this.grid[iz * this.nx + ix] = 1;
+        }
+      }
+    }
+    console.info(
+      `[surroundings] footprint ${this.nx}x${this.nz} cells rasterized in ` +
+        `${(performance.now() - started).toFixed(0)}ms`
+    );
+  }
+
+  coversCell(ix: number, iz: number): boolean {
+    if (ix < 0 || iz < 0 || ix >= this.nx || iz >= this.nz) return false;
+    return this.grid[iz * this.nx + ix] === 1;
+  }
+
+  covers(x: number, z: number): boolean {
+    return this.coversCell(
+      Math.floor((x - this.minX) / this.cell),
+      Math.floor((z - this.minZ) / this.cell)
+    );
+  }
+}
+
+/**
+ * 台地の床プレート。キャンパス footprint のセルはくり抜き、
+ * くり抜きの縁には下向きの断面壁を張って「地形の切り口」に見せる。
+ */
+function buildBasePlate(
+  sw: { x: number; z: number },
+  ne: { x: number; z: number },
+  baseY: number,
+  footprint: CampusFootprint
+): THREE.Mesh {
+  const minX = Math.min(sw.x, ne.x);
+  const maxX = Math.max(sw.x, ne.x);
+  const minZ = Math.min(sw.z, ne.z);
+  const maxZ = Math.max(sw.z, ne.z);
+
+  // 内側グリッド領域（footprint 全域を bbox にクランプ）
+  const gx0 = Math.max(minX, footprint.minX);
+  const gz0 = Math.max(minZ, footprint.minZ);
+  const gx1 = Math.min(maxX, footprint.minX + footprint.nx * footprint.cell);
+  const gz1 = Math.min(maxZ, footprint.minZ + footprint.nz * footprint.cell);
+
+  const positions: number[] = [];
+  const floorQuad = (x0: number, z0: number, x1: number, z1: number): void => {
+    if (x1 <= x0 || z1 <= z0) return;
+    positions.push(
+      x0, baseY, z0, x1, baseY, z0, x1, baseY, z1,
+      x0, baseY, z0, x1, baseY, z1, x0, baseY, z1
+    );
+  };
+  // くり抜き縁の断面壁（モデル最低部より下まで落とす）
+  const wallBottom = Math.min(footprint.minY, baseY) - 5;
+  const wall = (x0: number, z0: number, x1: number, z1: number): void => {
+    positions.push(
+      x0, baseY, z0, x1, baseY, z1, x1, wallBottom, z1,
+      x0, baseY, z0, x1, wallBottom, z1, x0, wallBottom, z0
+    );
+  };
+
+  // 外周 4 ストリップ（くり抜きの可能性がない領域は大きな板で済ませる）
+  floorQuad(minX, minZ, maxX, gz0);
+  floorQuad(minX, gz1, maxX, maxZ);
+  floorQuad(minX, gz0, gx0, gz1);
+  floorQuad(gx1, gz0, maxX, gz1);
+
+  // 内側は footprint のセル単位。覆われていないセルだけ床を張り、
+  // 覆われたセル（穴）の縁に壁を張る。
+  let holeCells = 0;
+  for (let iz = 0; iz < footprint.nz; iz++) {
+    for (let ix = 0; ix < footprint.nx; ix++) {
+      const x0 = Math.max(gx0, footprint.minX + ix * footprint.cell);
+      const z0 = Math.max(gz0, footprint.minZ + iz * footprint.cell);
+      const x1 = Math.min(gx1, footprint.minX + (ix + 1) * footprint.cell);
+      const z1 = Math.min(gz1, footprint.minZ + (iz + 1) * footprint.cell);
+      if (x1 <= x0 || z1 <= z0) continue;
+      if (!footprint.coversCell(ix, iz)) {
+        floorQuad(x0, z0, x1, z1);
+        continue;
+      }
+      holeCells++;
+      if (!footprint.coversCell(ix, iz - 1)) wall(x0, z0, x1, z0);
+      if (!footprint.coversCell(ix, iz + 1)) wall(x0, z1, x1, z1);
+      if (!footprint.coversCell(ix - 1, iz)) wall(x0, z0, x0, z1);
+      if (!footprint.coversCell(ix + 1, iz)) wall(x1, z0, x1, z1);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3)
+  );
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ color: 0x06110b, side: THREE.DoubleSide })
+  );
+  mesh.name = "surroundings-plate";
+  console.info(`[surroundings] plate: hole cells=${holeCells}`);
+  return mesh;
 }

@@ -44,11 +44,8 @@ async function main(): Promise<void> {
   ui.setLoadingText("周辺の街並みを生成中…");
   const campusBox = new THREE.Box3().setFromObject(campus.group);
   const surroundingsBaseY = campusBox.min.y + SURROUNDINGS.baseOffsetFromCampusMin;
+  ctx.scene.updateMatrixWorld(true);
   const surroundings = await loadSurroundings(
-    new THREE.Box2(
-      new THREE.Vector2(campusBox.min.x, campusBox.min.z),
-      new THREE.Vector2(campusBox.max.x, campusBox.max.z)
-    ),
     campus.raycastTargets,
     surroundingsBaseY
   );

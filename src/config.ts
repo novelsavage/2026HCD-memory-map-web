@@ -38,7 +38,7 @@ export const MAP_BOUNDS = {
 // OSM 周辺市街地（surroundings.ts）
 export const SURROUNDINGS = {
   // 変換後キャンパスモデルの bbox 底面より少し下げ、面の重なりを避ける
-  baseOffsetFromCampusMin: -0.3,
+  baseOffsetFromCampusMin: 22,
   buildingDefaultHeight: 6.5
 };
 
