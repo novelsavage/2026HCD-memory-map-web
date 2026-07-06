@@ -206,8 +206,10 @@ function createStationMarker(
 
 /**
  * キャンパスモデルの XZ 占有グリッド。
- * 全頂点を cell(m) グリッドへラスタライズする（モデルの頂点間隔は
- * cell より十分細かいので、覆われたセルに頂点が入らない隙間は出ない）。
+ * 三角形単位（XZ バウンディングボックス）で cell(m) グリッドへ塗る。
+ * 頂点だけのラスタライズだと、平坦部の巨大三角形（頂点間隔 >> cell）の
+ * 内側セルに頂点が入らず「モデル無し」と誤判定され、台地の床が
+ * キャンパス上に黒い四角として残る（実際に起きた不具合）。
  * 台地のくり抜き・建物や道路の重複除外の判定に共通で使う。
  */
 class CampusFootprint {
@@ -231,21 +233,34 @@ class CampusFootprint {
     this.grid = new Uint8Array(this.nx * this.nz);
 
     const started = performance.now();
-    const v = new THREE.Vector3();
+    const va = new THREE.Vector3();
+    const vb = new THREE.Vector3();
+    const vc = new THREE.Vector3();
     for (const obj of campusTargets) {
       if (!(obj instanceof THREE.Mesh)) continue;
-      const position = (obj.geometry as THREE.BufferGeometry).getAttribute(
-        "position"
-      ) as THREE.BufferAttribute | undefined;
+      const geometry = obj.geometry as THREE.BufferGeometry;
+      const position = geometry.getAttribute("position") as
+        | THREE.BufferAttribute
+        | undefined;
       if (!position) continue;
+      const index = geometry.getIndex();
+      const vertexCount = index ? index.count : position.count;
       obj.updateWorldMatrix(true, false);
-      for (let i = 0; i < position.count; i++) {
-        v.fromBufferAttribute(position, i);
-        v.applyMatrix4(obj.matrixWorld);
-        const ix = Math.floor((v.x - this.minX) / cell);
-        const iz = Math.floor((v.z - this.minZ) / cell);
-        if (ix >= 0 && iz >= 0 && ix < this.nx && iz < this.nz) {
-          this.grid[iz * this.nx + ix] = 1;
+      for (let i = 0; i + 2 < vertexCount; i += 3) {
+        va.fromBufferAttribute(position, index ? index.getX(i) : i);
+        vb.fromBufferAttribute(position, index ? index.getX(i + 1) : i + 1);
+        vc.fromBufferAttribute(position, index ? index.getX(i + 2) : i + 2);
+        va.applyMatrix4(obj.matrixWorld);
+        vb.applyMatrix4(obj.matrixWorld);
+        vc.applyMatrix4(obj.matrixWorld);
+        const ix0 = Math.max(0, Math.floor((Math.min(va.x, vb.x, vc.x) - this.minX) / cell));
+        const ix1 = Math.min(this.nx - 1, Math.floor((Math.max(va.x, vb.x, vc.x) - this.minX) / cell));
+        const iz0 = Math.max(0, Math.floor((Math.min(va.z, vb.z, vc.z) - this.minZ) / cell));
+        const iz1 = Math.min(this.nz - 1, Math.floor((Math.max(va.z, vb.z, vc.z) - this.minZ) / cell));
+        for (let iz = iz0; iz <= iz1; iz++) {
+          for (let ix = ix0; ix <= ix1; ix++) {
+            this.grid[iz * this.nx + ix] = 1;
+          }
         }
       }
     }
