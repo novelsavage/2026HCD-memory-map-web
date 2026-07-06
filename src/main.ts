@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { createSceneContext, HOME_CAMERA_POS } from "./scene";
-import { loadCampusModel, snapToGround } from "./campus";
+import { buildCampusSkirt, loadCampusModel, snapToGround } from "./campus";
 import { loadSurroundings } from "./surroundings";
 import { loadMemories } from "./data";
 import { MemoryMarkers, isInMapBounds } from "./cards";
@@ -56,6 +56,10 @@ async function main(): Promise<void> {
     ctx.scene.add(surroundings.group);
   }
   const groundFallbackY = surroundings?.baseY ?? campusBox.min.y;
+
+  // 台地より上に浮いたモデル縁の下をスカート壁で埋める（浮島対策）
+  const skirt = buildCampusSkirt(campus.raycastTargets, groundFallbackY - 1);
+  if (skirt) ctx.scene.add(skirt);
   const campusGroundTargets = campus.raycastTargets;
   const surroundingsGroundTargets = surroundings?.raycastTargets ?? [];
 

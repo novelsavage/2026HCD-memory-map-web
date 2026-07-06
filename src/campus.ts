@@ -138,3 +138,104 @@ export function snapToGround(
 
   return fallbackY;
 }
+
+/**
+ * キャンパスメッシュの境界（開いたエッジ）から bottomY まで垂直壁を張る
+ * 「スカート」を生成する。台地より上に浮いたモデルの縁の下の虚空を埋め、
+ * 浮島に見える問題を解消する。?noskirt で無効化。
+ *
+ * 境界エッジ = 1 つの三角形にしか使われないエッジ。頂点座標を 0.25m の
+ * グリッドに量子化してハッシュ化し、Draco の量子化誤差と Google タイル間の
+ * 継ぎ目のわずかな不一致を吸収して数える。
+ */
+export function buildCampusSkirt(
+  campusTargets: THREE.Object3D[],
+  bottomY: number
+): THREE.Mesh | null {
+  if (new URLSearchParams(location.search).has("noskirt")) return null;
+  const started = performance.now();
+  const Q = 0.25;
+
+  interface EdgeEntry {
+    count: number;
+    ax: number; ay: number; az: number;
+    bx: number; by: number; bz: number;
+  }
+  const edges = new Map<string, EdgeEntry>();
+
+  const va = new THREE.Vector3();
+  const vb = new THREE.Vector3();
+  const vc = new THREE.Vector3();
+  const keys: string[] = ["", "", ""];
+  const verts = [va, vb, vc];
+  const keyOf = (v: THREE.Vector3): string =>
+    `${Math.round(v.x / Q)},${Math.round(v.y / Q)},${Math.round(v.z / Q)}`;
+
+  const countEdge = (p: THREE.Vector3, q: THREE.Vector3, kp: string, kq: string): void => {
+    if (kp === kq) return; // 量子化で潰れた退化エッジ
+    const key = kp < kq ? `${kp}|${kq}` : `${kq}|${kp}`;
+    const entry = edges.get(key);
+    if (entry) {
+      entry.count++;
+    } else {
+      edges.set(key, {
+        count: 1,
+        ax: p.x, ay: p.y, az: p.z,
+        bx: q.x, by: q.y, bz: q.z
+      });
+    }
+  };
+
+  for (const obj of campusTargets) {
+    if (!(obj instanceof THREE.Mesh)) continue;
+    const geometry = obj.geometry as THREE.BufferGeometry;
+    const position = geometry.getAttribute("position");
+    if (!position) continue;
+    const index = geometry.getIndex();
+    const vertexCount = index ? index.count : position.count;
+    obj.updateWorldMatrix(true, false);
+    for (let i = 0; i < vertexCount; i += 3) {
+      for (let c = 0; c < 3; c++) {
+        const vi = index ? index.getX(i + c) : i + c;
+        verts[c].fromBufferAttribute(position as THREE.BufferAttribute, vi);
+        verts[c].applyMatrix4(obj.matrixWorld);
+        keys[c] = keyOf(verts[c]);
+      }
+      countEdge(va, vb, keys[0], keys[1]);
+      countEdge(vb, vc, keys[1], keys[2]);
+      countEdge(vc, va, keys[2], keys[0]);
+    }
+  }
+
+  // 境界エッジ（count===1）から壁クアッドを生成
+  const wallPositions: number[] = [];
+  let boundaryCount = 0;
+  for (const e of edges.values()) {
+    if (e.count !== 1) continue;
+    // すでに台地以下のエッジには壁は不要
+    if (e.ay <= bottomY && e.by <= bottomY) continue;
+    boundaryCount++;
+    // 三角形 2 枚: (a, b, b') (a, b', a')  ※ ' は bottomY へ落とした点
+    wallPositions.push(
+      e.ax, e.ay, e.az, e.bx, e.by, e.bz, e.bx, bottomY, e.bz,
+      e.ax, e.ay, e.az, e.bx, bottomY, e.bz, e.ax, bottomY, e.az
+    );
+  }
+  if (wallPositions.length === 0) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(wallPositions, 3)
+  );
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ color: 0x0b1f15, side: THREE.DoubleSide })
+  );
+  mesh.name = "campus-skirt";
+  console.info(
+    `[campus] skirt: boundary edges=${boundaryCount} ` +
+      `built in ${(performance.now() - started).toFixed(0)}ms`
+  );
+  return mesh;
+}
