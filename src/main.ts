@@ -208,11 +208,23 @@ async function setupDebugGui(
   model.add(MODEL_TRANSFORM, "offsetY", -100, 100).onChange(applyModel);
   model.add(MODEL_TRANSFORM, "offsetZ", -500, 500).onChange(applyModel);
 
+  // 台地の高さ（モデル bbox min からのオフセット）。
+  // モデル縁の浮きは offsetY では直らない（台地が min に追従するため）。
+  // このオフセットを上げて台地を縁の高さに合わせるのが根本調整。
+  if (surroundings) {
+    const sur = gui.addFolder("Surroundings (config.SURROUNDINGS)");
+    sur
+      .add(SURROUNDINGS, "baseOffsetFromCampusMin", -10, 60)
+      .name("台地の高さオフセット(m)")
+      .onChange(applyModel);
+  }
+
   gui.add(
     {
       dump: () => {
         console.log("CALIBRATION =", JSON.stringify(CALIBRATION, null, 2));
         console.log("MODEL_TRANSFORM =", JSON.stringify(MODEL_TRANSFORM, null, 2));
+        console.log("SURROUNDINGS =", JSON.stringify(SURROUNDINGS, null, 2));
       }
     },
     "dump"
