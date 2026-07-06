@@ -44,14 +44,17 @@ export async function loadSurroundings(
   // キャンパスモデルの XZ 占有グリッド（台地のくり抜き・重複除外の共通判定）
   const footprint = new CampusFootprint(campusTargets);
 
-  // --- 台地プレート（キャンパスの真下だけくり抜いた暗い床） ---
-  // モデルは高低差が大きく、台地を縁の高さまで上げると低地が埋もれる。
-  // そこでモデル footprint のセルには床を張らず「穴」にする。
-  const sw = projectLatLon(data.bounds.south, data.bounds.west);
-  const ne = projectLatLon(data.bounds.north, data.bounds.east);
-  const plate = buildBasePlate(sw, ne, baseY, footprint);
-  group.add(plate);
-  raycastTargets.push(plate);
+  // --- 台地プレート（?plate=1 の時のみ） ---
+  // 既定では床を描画しない。平らな床と起伏のある実地形を1つの高さで
+  // 接ぐと、どこかが必ず浮くか陥没して見えるため、床自体を無くして
+  // 「道路と建物の光る回路が夜に浮かぶ」表現にしている。
+  if (new URLSearchParams(location.search).has("plate")) {
+    const sw = projectLatLon(data.bounds.south, data.bounds.west);
+    const ne = projectLatLon(data.bounds.north, data.bounds.east);
+    const plate = buildBasePlate(sw, ne, baseY, footprint);
+    group.add(plate);
+    raycastTargets.push(plate);
+  }
 
   // --- 建物（押し出し + エッジ発光） ---
   const solidGeos: THREE.BufferGeometry[] = [];

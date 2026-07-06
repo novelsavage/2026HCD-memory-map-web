@@ -78,31 +78,8 @@ export function createSceneContext(container: HTMLElement): SceneContext {
 function addGround(scene: THREE.Scene): void {
   const grid = new THREE.GridHelper(4000, 100, 0x1a5c38, 0x0e3320);
   (grid.material as THREE.Material).transparent = true;
-  (grid.material as THREE.Material).opacity = 0.28;
+  (grid.material as THREE.Material).opacity = 0.16;
   grid.position.y = -1.2;
   scene.add(grid);
 
-  // 中心の淡い発光サークル
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 256;
-  const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0, "rgba(52, 180, 120, 0.10)");
-  grad.addColorStop(0.7, "rgba(24, 100, 70, 0.03)");
-  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 256, 256);
-  const glowTexture = new THREE.CanvasTexture(canvas);
-  const glow = new THREE.Mesh(
-    new THREE.PlaneGeometry(1300, 1300),
-    new THREE.MeshBasicMaterial({
-      map: glowTexture,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    })
-  );
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.y = -1.4;
-  scene.add(glow);
 }
