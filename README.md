@@ -7,7 +7,9 @@
 
 **🌐 ライブデモ: https://2026-hcd-memory-map-web.vercel.app**
 
-<!-- TODO: docs/screenshots/ にスクリーンショットを配置（プライバシー配慮のため ?demo=1 のダミーデータで撮ること） -->
+<p align="center">
+  <img src="docs/screenshots/viewer-hero.jpg" alt="思い出マップ 2026 Web ビューア：フォトリアルなキャンパス 3D モデルと OSM ワイヤーフレーム市街地、思い出テキストピン" width="900">
+</p>
 
 ## 画面の構成
 
